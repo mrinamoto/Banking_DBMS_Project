@@ -49,4 +49,4 @@
 47. Why balance snapshots? Receipts/audits show exact before-and-after state.
 48. Why no deletes? Financial history must remain traceable.
 49. Audit log? Records entity, record, action, actor, time, old/new summary.
-50. Biggest limitation? Oracle runtime and full browser E2E checks remain local verification tasks.
+50. Biggest limitation? Oracle runtime, four-role E2E, and visual viewport evidence remain local verification tasks; the project is not claimed ready until those pass.

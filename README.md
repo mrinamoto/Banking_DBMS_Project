@@ -5,8 +5,8 @@ An academic banking simulation built around Oracle SQL and PL/SQL. React provide
 ## Features and roles
 
 - Admin: branches, staff visibility, customers, accounts, transactions, loans, reports, and audit APIs.
-- Manager: branch-scoped operations and loan decisions.
-- Employee: customer registration, account opening, deposits, withdrawals, transfers, and loan applications.
+- Manager: operations, employees, accounts, transactions, loans, and decisions for the manager's assigned branch.
+- Employee: institution-wide customer registration, followed by account/financial/loan operations only for the employee's assigned branch.
 - Customer: own accounts, transactions, transfers, loans, and limited profile changes.
 
 Core modules include branches, employees, customers, account types/accounts, deposit, withdrawal, atomic transfer, transaction receipts/history, loan types/applications/decisions/payments, reports, users, RBAC, and audit history.
@@ -49,7 +49,7 @@ Install the dedicated Oracle schema from the project root:
 sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
 ```
 
-`run_all.sql` deliberately excludes destructive cleanup and optional DBA role grants. Exact order: tables, extra constraints, indexes, functions, packages, compatibility procedures, views, audit triggers, sample data. Check `USER_ERRORS` after compilation.
+`run_all.sql` uses child-relative `@@` paths and deliberately excludes destructive cleanup and optional DBA role grants. Exact order: tables/sequence, extra constraints, indexes, functions, packages, compatibility procedures, views, audit triggers, sample data, compiler report. Check `USER_ERRORS` after compilation.
 
 Start both processes in separate PowerShell windows:
 
@@ -96,13 +96,17 @@ Run `database/tests/acceptance_tests.sql` only in a disposable project schema. I
 
 ## Important design rule
 
-PL/SQL packages validate and mutate data but do not commit. Express commits once after the complete package call succeeds and rolls back on any error. This makes transfer and loan disbursement atomic.
+PL/SQL packages validate and mutate data but do not commit. Express commits once after the complete package call succeeds and rolls back on any error. This makes transfer, loan disbursement, and loan payment atomic. Managers and employees are checked against `req.user.branchId`; a staff transfer is allowed only when the source account belongs to that branch. Customer ownership is checked independently.
+
+The dashboard metric **Operational Transaction Volume** counts deposits, withdrawals, transfer debits, loan disbursements, and loan payments. It excludes transfer credits so one transfer is not counted twice.
+
+Logout removes the bearer token from browser storage. This classroom implementation has no server-side token revocation list; an already copied token remains valid until its eight-hour expiry. Use a new `SESSION_SECRET` to invalidate all tokens during a security reset.
 
 ## Known limitations
 
 - Oracle runtime compilation was not available during the Codex pass and must be performed locally.
 - Demo user creation is intentionally manual so no shared password enters source control.
-- The UI covers the demonstration path; advanced employee editing, account status controls, loan payments, audit-log UI, chart rendering, date filters, and full browser automation remain limited.
+- Chart rendering and browser automation are not included. Oracle compilation, four-role runtime tests, and desktop/tablet/mobile visual evidence remain pending locally.
 - This is an academic simulation, not production banking software.
 
 ## Team

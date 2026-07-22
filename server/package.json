@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "check": "node --check server.js && node --check app.js",
+    "check": "node scripts/check-all-js.js",
+    "test": "node --test",
     "demo-hash": "node scripts/generate-demo-hash.js"
   },
   "keywords": [],

@@ -1,60 +1,49 @@
 # Final Audit Report
 
-## Executive summary
+Audit date: 22 July 2026
 
-Initial estimated completion: 28%. Final estimated implementation completion: 82%. The prototype is now a coherent React/Express/Oracle academic system with normalized schema, safe PL/SQL financial packages, signed authentication, centralized RBAC, ownership/branch scoping, real database dashboards, connected management/transaction/loan/report pages, responsive styling, and faculty documentation.
+## Evidence-based result
 
-## Feature matrix
+The repository now contains a coherent React/Express/Oracle academic banking system. Confirmed static checks pass. Oracle installation, compilation, database acceptance execution, four-role runtime testing, and browser viewport evidence still require the student's local Oracle environment and demo accounts. No completion percentage or faculty score is claimed without that runtime evidence.
 
-| Feature | Final status |
-|---|---|
-| Setup/configuration/client build | Complete; build verified |
-| Oracle schema/constraints/indexes/views | Implemented; runtime compilation required |
-| Deposit/withdrawal/atomic transfer | Implemented in package/API; runtime test required |
-| Loan application/approval/disbursement/payment | Package complete; UI covers apply/decision, payment is SQL/API follow-up |
-| Authentication/RBAC/ownership | Implemented; runtime role tests required |
-| Branch/customer/account management | Core list/create workflows connected |
-| Employee management | Role-scoped listing; create/update/status UI not complete |
-| Transaction history/receipt | Connected; basic type/search API, UI filter controls limited |
-| Reports/dashboard | Connected to Oracle; charts not rendered |
-| Audit | Table/triggers/admin API; audit page not implemented |
-| Responsive UI/states | Implemented; browser visual QA required |
-| Automated QA | Build/lint/syntax; Oracle/browser automation limited |
-| Academic documentation | Complete core set |
+## Confirmed fixes
 
-## Database objects
+- `INSTALL-001`: `database/run_all.sql` uses child-relative `@@` calls in dependency order and excludes cleanup.
+- `PL-001`: deposit, withdrawal, transfer, and loan payment create savepoints before all protected validation; packages contain no commit.
+- `TEST-001`: legacy tests were replaced; acceptance failures verify exact `SQLCODE` and unchanged values.
+- `AUTHZ-001`: reusable branch/customer/loan/account scope checks protect manager and employee mutations.
+- `LOAN-001`: payment account ownership, API payment/history, UI payment/history, receipt, and completion status are connected.
+- `HEALTH-001`: `/api/health` queries `DUAL`, returns connected status or safe HTTP 503, and closes its connection.
+- `REPORT-001`: Operational Transaction Volume excludes `TRANSFER_CREDIT`.
+- `AUDIT-001`: Oracle client identifier records `username:userId`; transaction update and delete are blocked.
+- `UI-001`: customer/account selections, loan forms, filters, pagination, employee/status management, receipts, and admin audit UI were added.
+- `DOC-001`: setup, schema, scope, test evidence, limitations, and beginner guides now match the implementation.
 
-- 12 tables, extensive PK/FK/UQ/check/default rules, 1 business sequence, 8 explicit indexes.
-- 6 views, 5 standalone functions, 2 packages with 11 public operations, 3 wrapper procedures, 4 triggers, 16 report queries.
-- Optional Oracle roles/grants in a separate, deliberately non-automatic script.
+## Feature status
 
-## Major fixes
+| Feature | Static implementation | Runtime evidence |
+|---|---|---|
+| Installer and 12-table schema | Complete | Oracle pending |
+| Functions/packages/procedures/views/triggers | Complete | Oracle compilation pending |
+| Account opening/deposit/withdrawal/transfer | Connected | Oracle/E2E pending |
+| Loan application/decision/disbursement/payment | Connected | Oracle/E2E pending |
+| Authentication/RBAC/ownership/branch scope | Connected; unit checks pass | Four-role test pending |
+| Dashboard/reports/audit | Connected | Direct SQL comparison pending |
+| Responsive UI | Builds and lints | Visual viewport evidence pending |
+| Documentation | Complete for current scope | Local evidence fields pending |
 
-Resolved: AUTH-001/002, DB-001/002/003/004/005, PL-001/002/003, BACKEND-001/002/003, UI-001/002/003/004, SETUP-001, SQL-001, DOC-001. TEST-001 is partially resolved because local Oracle and browser E2E execution remain outstanding.
+## Preserved design
 
-## Verification and limitations
+The project remains React 19, Vite, Tailwind CSS, Express 5, Node.js, `node-oracledb`, Oracle SQL, and Oracle PL/SQL. Existing normalized table names and package architecture were retained. Cards and beneficiaries are not claimed as implemented.
 
-The client production build, lint, server parsing, and patch checks pass at the final gate. No database was reset or changed. Oracle packages/DDL were not compiled against a live instance, and no credential-backed end-to-end test was performed. Employee editing, account status UI, loan-payment UI, audit UI, Chart.js charts, full filters, and browser automation remain limitations.
+## Remaining blockers
 
-## Faculty score estimate
-
-| Category | Score |
-|---|---:|
-| Problem definition | 5/5 |
-| Requirement analysis | 5/5 |
-| ER diagram | 9/10 |
-| Relational schema | 9/10 |
-| Normalisation | 9/10 |
-| Constraints and integrity | 9/10 |
-| SQL queries | 9/10 |
-| PL/SQL | 9/10 |
-| Transaction and ACID | 9/10 |
-| UI and usability | 4/5 |
-| Testing | 3/5 |
-| Documentation | 5/5 |
-| Presentation readiness | 4/5 |
-| **Total** | **89/100** |
+1. Run `database/run_all.sql` in a fresh dedicated Oracle schema.
+2. Resolve every row from `USER_ERRORS` and every invalid project object, if any.
+3. Run `database/tests/acceptance_tests.sql` and capture output.
+4. Create temporary hash-backed demo users and complete the four-role matrix.
+5. Capture desktop, tablet, and mobile evidence for the connected workflows.
 
 ## Readiness decision
 
-**Requires additional testing.** No known critical design issue remains, but local Oracle compilation and successful end-to-end role/financial tests are mandatory before claiming faculty-demo readiness.
+**Oracle verification still required.** Static implementation is ready for local database verification, but the project must not be presented as fully demonstrated until the pending evidence is recorded.

@@ -1,6 +1,6 @@
 # SQL and PL/SQL Explanation
 
-Run `database/run_all.sql` from the repository root in SQL*Plus/SQLcl or open it from SQL Developer. It stops and rolls back on an SQL error, then reports `USER_ERRORS`.
+Run `database/run_all.sql` from the repository root in SQL*Plus/SQLcl or open it from SQL Developer. Its `@@sql/...` calls resolve relative to `run_all.sql`; it stops and rolls back on an SQL error, then reports `USER_ERRORS`. It never calls the development cleanup script.
 
 | File/object | Purpose and concepts | Inputs/output/errors |
 |---|---|---|
@@ -11,14 +11,26 @@ Run `database/run_all.sql` from the repository root in SQL*Plus/SQLcl or open it
 | `11_packages.sql` | `PKG_BANKING_OPERATIONS`, `PKG_LOAN_OPERATIONS` | Raises `-20010..-20114`; never commits |
 | `08_procedures.sql` | Beginner-friendly compatibility wrappers | Delegate to the package; caller commits |
 | `04_views.sql` | Six reusable join/aggregate views | Customer account, branch, transactions, loans, daily totals, pending loans |
-| `10_triggers.sql` | Audit meaningful customer/account/loan changes; protect ledger deletes | Inserts audit rows; blocks transaction delete |
+| `10_triggers.sql` | Resolve the application audit actor; audit customer/account/loan changes; protect ledger history | Prefers `CLIENT_IDENTIFIER`, falls back to schema user; blocks transaction update/delete |
 | `03_insert_sample_data.sql` | Fictional branches/types/people/accounts | Commits only installation demo data |
 | `06_queries.sql` | 16 reports | Joins, left joins, aggregates, HAVING, subqueries, correlation, CASE, dates |
 | `11_security_privileges.sql` | Optional Oracle role grants | Requires DBA-created roles and is excluded from `run_all.sql` |
 
 ## Atomic transfer walkthrough
 
-`transfer_funds` validates amount/accounts/ownership, gets both IDs, locks both account rows in ID order, verifies status and minimum balance, creates a savepoint, updates both balances, inserts debit and credit transactions with old/new balances, and links them in `FUND_TRANSFERS`. Any exception rolls back to the savepoint. Express then commits once; an API error rolls back the connection.
+`transfer_funds` creates its savepoint before validation, validates amount/accounts/ownership, gets both IDs, locks both account rows in ID order, verifies status and minimum balance, updates both balances, inserts debit and credit transactions with old/new balances, and links them in `FUND_TRANSFERS`. Any exception rolls back to the savepoint. Express then commits once; an API error rolls back the connection.
+
+`record_payment` locks the loan and payment account, confirms both belong to the same customer, rejects non-positive/over/out-of-balance payments, records account and outstanding snapshots, and changes zero-outstanding loans to `COMPLETED`.
+
+## Package, procedure, and function
+
+- A function returns one value and can be called from SQL, such as `FN_CALCULATE_EMI`.
+- A procedure performs an operation through parameters, such as the `PR_DEPOSIT` compatibility wrapper.
+- A package groups a public specification and implementation body. `PKG_BANKING_OPERATIONS` and `PKG_LOAN_OPERATIONS` are the authoritative business APIs.
+
+## Operational Transaction Volume
+
+The dashboard counts deposits, withdrawals, transfer debits, loan disbursements, and loan payments. It excludes `TRANSFER_CREDIT`, because debit and credit represent the same transfer. `database/tests/test_queries.sql` prints all-ledger volume beside operational volume for comparison.
 
 ## Examples
 

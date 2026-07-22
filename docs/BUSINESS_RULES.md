@@ -10,4 +10,7 @@
 8. A pending loan is decided once. Approval cannot exceed the request; rejection needs a reason.
 9. Loan terms/amounts follow the selected type. Browser calculations are advisory only; Oracle calculates EMI.
 10. Loan payments are positive and cannot exceed outstanding balance. Zero outstanding marks completion.
-11. Disabled users cannot log in. Managers are branch-scoped; audit access is admin-only.
+11. Disabled users cannot log in. Invalid passwords increment `FAILED_LOGIN_COUNT`; successful login resets it.
+12. Managers and employees perform account/transaction/loan/staff mutations only for their assigned branch. A staff transfer is scoped by its source account; the internal receiver may be another branch.
+13. Audit access is Admin-only. Express sets `username:userId` as Oracle client identifier before mutations.
+14. Operational Transaction Volume excludes transfer-credit rows to avoid double counting.

@@ -28,7 +28,7 @@ This plan uses the existing React/Express/Oracle stack and makes the smallest co
 5. Use a single Oracle connection per HTTP request. PL/SQL packages perform validation and mutations; Express commits only after a successful package call and rolls back on error.
 6. Use signed bearer tokens and Node's built-in `scrypt` password hashing to avoid plain-text passwords and unnecessary dependencies.
 7. Use parameterized binds for every input. Dynamic sort/filter clauses are allow-listed.
-8. Do not keep the out-of-scope card module in the main navigation; preserve its existing source file without presenting it as a completed core feature.
+8. Cards remain outside scope. A reference check later confirmed the placeholder card page was unused, so it was safely removed in the follow-up pass.
 
 ## Controlled change policy
 
@@ -36,4 +36,3 @@ This plan uses the existing React/Express/Oracle stack and makes the smallest co
 - Legacy files deleted by the owner are not restored when reorganized equivalents exist.
 - No commit, push, database reset, cleanup script execution, or real-data deletion will occur.
 - When Oracle is unavailable, SQL correctness is checked statically and clearly marked runtime-unverified.
-

@@ -15,8 +15,17 @@ async function login(req, res, next) {
         { username: req.body.username.trim() }
       );
       const user = result.rows[0];
-      const valid = user && user.IS_ACTIVE === "Y" && await verifyPassword(req.body.password, user.PASSWORD_HASH);
-      if (!valid) return res.status(401).json({ message: "Invalid username or password." });
+      const validPassword = user && await verifyPassword(req.body.password, user.PASSWORD_HASH);
+      if (!user || user.IS_ACTIVE !== "Y" || !validPassword) {
+        if (user && user.IS_ACTIVE === "Y" && !validPassword) {
+          await connection.execute(
+            "UPDATE users SET failed_login_count = failed_login_count + 1 WHERE user_id = :id",
+            { id: user.USER_ID }
+          );
+          await connection.commit();
+        }
+        return res.status(401).json({ message: "Invalid username or password." });
+      }
       await connection.execute("UPDATE users SET last_login = SYSTIMESTAMP, failed_login_count = 0 WHERE user_id = :id", { id: user.USER_ID });
       await connection.commit();
       const profile = { id: user.USER_ID, username: user.USERNAME, role: user.ROLE, customerId: user.CUSTOMER_ID, employeeId: user.EMPLOYEE_ID, branchId: user.BRANCH_ID };

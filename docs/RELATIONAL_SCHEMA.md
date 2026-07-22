@@ -11,4 +11,6 @@
 - `LOAN_TYPES(loan_type_id PK, limits, rate, terms)`
 - `LOANS(loan_id PK, loan_number UQ, customer/type/account/reviewer FK, financial state)`
 - `LOAN_PAYMENTS(payment_id PK, loan/account/transaction/user FK, outstanding snapshots)`
-- `AUDIT_LOG(audit_id PK, table, record, actor, old/new summary, time)`
+- `AUDIT_LOG(audit_id PK, table, record, actor, old/new summary, time)`; actor prefers Oracle `CLIENT_IDENTIFIER` set by Express.
+
+`TRANSACTIONS` is append-only: a trigger rejects update and delete. A transfer has exactly one semantic `FUND_TRANSFERS` row and two linked transaction rows. Managers/employees derive branch scope by joining their `USERS.EMPLOYEE_ID` to `EMPLOYEES.BRANCH_ID`; branch is not duplicated in `USERS`.

@@ -36,7 +36,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_banking_operations AS
   PROCEDURE deposit(p_account_number VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_reference OUT VARCHAR2) IS
     v_id NUMBER; v_old NUMBER(15,2); v_status VARCHAR2(12);
   BEGIN
-    assert_amount(p_amount); SAVEPOINT deposit_start;
+    SAVEPOINT deposit_start;
+    assert_amount(p_amount);
     SELECT account_id,balance,status INTO v_id,v_old,v_status FROM accounts WHERE account_number=p_account_number FOR UPDATE;
     IF v_status <> 'ACTIVE' THEN RAISE_APPLICATION_ERROR(-20015,'Account is not active.'); END IF;
     p_reference:=reference('DEP');
@@ -49,7 +50,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_banking_operations AS
   PROCEDURE withdraw(p_account_number VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_reference OUT VARCHAR2) IS
     v_id NUMBER; v_old NUMBER(15,2); v_min NUMBER(15,2); v_status VARCHAR2(12);
   BEGIN
-    assert_amount(p_amount); SAVEPOINT withdrawal_start;
+    SAVEPOINT withdrawal_start;
+    assert_amount(p_amount);
     SELECT a.account_id,a.balance,a.status,t.min_balance INTO v_id,v_old,v_status,v_min FROM accounts a JOIN account_types t ON t.account_type_id=a.account_type_id WHERE a.account_number=p_account_number FOR UPDATE OF a.balance;
     IF v_status <> 'ACTIVE' THEN RAISE_APPLICATION_ERROR(-20017,'Account is not active.'); END IF;
     IF v_old-p_amount < v_min THEN RAISE_APPLICATION_ERROR(-20018,'Insufficient available balance after minimum balance.'); END IF;
@@ -62,7 +64,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_banking_operations AS
   PROCEDURE transfer_funds(p_from_account VARCHAR2, p_to_account VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_owner_customer_id NUMBER, p_reference OUT VARCHAR2) IS
     v_from_id NUMBER; v_to_id NUMBER; v_from_old NUMBER(15,2); v_to_old NUMBER(15,2); v_min NUMBER(15,2); v_from_status VARCHAR2(12); v_to_status VARCHAR2(12); v_owner NUMBER; v_debit NUMBER; v_credit NUMBER;
   BEGIN
-    assert_amount(p_amount); IF p_from_account=p_to_account THEN RAISE_APPLICATION_ERROR(-20020,'Source and destination must differ.'); END IF; SAVEPOINT transfer_start;
+    SAVEPOINT transfer_start;
+    assert_amount(p_amount);
+    IF p_from_account=p_to_account THEN RAISE_APPLICATION_ERROR(-20020,'Source and destination must differ.'); END IF;
     -- Lock in account-id order to reduce deadlock risk between concurrent transfers.
     SELECT account_id INTO v_from_id FROM accounts WHERE account_number=p_from_account;
     SELECT account_id INTO v_to_id FROM accounts WHERE account_number=p_to_account;
@@ -122,8 +126,37 @@ CREATE OR REPLACE PACKAGE BODY pkg_loan_operations AS
     UPDATE loans SET approved_amount=p_approved_amount,monthly_installment=v_emi,total_repayable=v_total,outstanding_balance=v_total,status='ACTIVE',reviewed_by=p_reviewer_employee_id,reviewed_at=SYSTIMESTAMP,start_date=SYSDATE,end_date=ADD_MONTHS(SYSDATE,term_months) WHERE loan_id=p_loan_id;
   EXCEPTION WHEN NO_DATA_FOUND THEN ROLLBACK TO loan_approval; RAISE_APPLICATION_ERROR(-20105,'Pending loan or active account not found.'); WHEN OTHERS THEN ROLLBACK TO loan_approval; RAISE; END;
   PROCEDURE reject_loan(p_loan_id NUMBER,p_reason VARCHAR2,p_reviewer_employee_id NUMBER) IS v_status VARCHAR2(20); BEGIN IF TRIM(p_reason) IS NULL THEN RAISE_APPLICATION_ERROR(-20106,'Rejection reason is required.'); END IF; SELECT status INTO v_status FROM loans WHERE loan_id=p_loan_id FOR UPDATE; IF v_status<>'PENDING' THEN RAISE_APPLICATION_ERROR(-20107,'Loan has already been decided.'); END IF; UPDATE loans SET status='REJECTED',rejection_reason=TRIM(p_reason),reviewed_by=p_reviewer_employee_id,reviewed_at=SYSTIMESTAMP WHERE loan_id=p_loan_id; EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20108,'Loan not found.'); END;
-  PROCEDURE record_payment(p_loan_id NUMBER,p_account_number VARCHAR2,p_amount NUMBER,p_received_by NUMBER,p_reference OUT VARCHAR2) IS v_out NUMBER;v_status VARCHAR2(20);v_account NUMBER;v_old NUMBER;v_tx NUMBER;v_new NUMBER;
-  BEGIN IF p_amount<=0 THEN RAISE_APPLICATION_ERROR(-20109,'Payment must be positive.'); END IF; SAVEPOINT loan_payment; SELECT outstanding_balance,status INTO v_out,v_status FROM loans WHERE loan_id=p_loan_id FOR UPDATE; IF v_status<>'ACTIVE' THEN RAISE_APPLICATION_ERROR(-20110,'Only active loans accept payment.'); END IF; IF p_amount>v_out THEN RAISE_APPLICATION_ERROR(-20111,'Payment exceeds outstanding balance.'); END IF; SELECT account_id,balance INTO v_account,v_old FROM accounts WHERE account_number=p_account_number AND status='ACTIVE' FOR UPDATE; IF p_amount>v_old THEN RAISE_APPLICATION_ERROR(-20112,'Insufficient account balance.'); END IF; v_new:=v_out-p_amount;p_reference:='LNP'||TO_CHAR(SYSTIMESTAMP,'YYYYMMDDHH24MISSFF3')||seq_business_reference.NEXTVAL; UPDATE accounts SET balance=v_old-p_amount,last_transaction_date=SYSTIMESTAMP WHERE account_id=v_account; INSERT INTO transactions(account_id,transaction_type,amount,previous_balance,new_balance,reference_no,description,processed_by) VALUES(v_account,'LOAN_PAYMENT',p_amount,v_old,v_old-p_amount,p_reference,'Loan payment',p_received_by) RETURNING transaction_id INTO v_tx; INSERT INTO loan_payments(loan_id,account_id,transaction_id,amount,previous_outstanding,new_outstanding,received_by) VALUES(p_loan_id,v_account,v_tx,p_amount,v_out,v_new,p_received_by); UPDATE loans SET outstanding_balance=v_new,status=CASE WHEN v_new=0 THEN 'COMPLETED' ELSE 'ACTIVE' END WHERE loan_id=p_loan_id;
+  PROCEDURE record_payment(p_loan_id NUMBER,p_account_number VARCHAR2,p_amount NUMBER,p_received_by NUMBER,p_reference OUT VARCHAR2) IS
+    v_out NUMBER;
+    v_status VARCHAR2(20);
+    v_account NUMBER;
+    v_old NUMBER;
+    v_tx NUMBER;
+    v_new NUMBER;
+    v_loan_customer NUMBER;
+    v_account_customer NUMBER;
+  BEGIN
+    SAVEPOINT loan_payment;
+    IF p_amount IS NULL OR p_amount<=0 THEN RAISE_APPLICATION_ERROR(-20109,'Payment must be positive.'); END IF;
+    SELECT outstanding_balance,status,customer_id
+      INTO v_out,v_status,v_loan_customer
+      FROM loans WHERE loan_id=p_loan_id FOR UPDATE;
+    IF v_status<>'ACTIVE' THEN RAISE_APPLICATION_ERROR(-20110,'Only active loans accept payment.'); END IF;
+    IF p_amount>v_out THEN RAISE_APPLICATION_ERROR(-20111,'Payment exceeds outstanding balance.'); END IF;
+    SELECT account_id,balance,customer_id
+      INTO v_account,v_old,v_account_customer
+      FROM accounts WHERE account_number=p_account_number AND status='ACTIVE' FOR UPDATE;
+    IF v_account_customer<>v_loan_customer THEN RAISE_APPLICATION_ERROR(-20115,'Payment account does not belong to the loan customer.'); END IF;
+    IF p_amount>v_old THEN RAISE_APPLICATION_ERROR(-20112,'Insufficient account balance.'); END IF;
+    v_new:=v_out-p_amount;
+    p_reference:='LNP'||TO_CHAR(SYSTIMESTAMP,'YYYYMMDDHH24MISSFF3')||seq_business_reference.NEXTVAL;
+    UPDATE accounts SET balance=v_old-p_amount,last_transaction_date=SYSTIMESTAMP WHERE account_id=v_account;
+    INSERT INTO transactions(account_id,transaction_type,amount,previous_balance,new_balance,reference_no,description,processed_by)
+    VALUES(v_account,'LOAN_PAYMENT',p_amount,v_old,v_old-p_amount,p_reference,'Loan payment',p_received_by)
+    RETURNING transaction_id INTO v_tx;
+    INSERT INTO loan_payments(loan_id,account_id,transaction_id,amount,previous_outstanding,new_outstanding,received_by)
+    VALUES(p_loan_id,v_account,v_tx,p_amount,v_out,v_new,p_received_by);
+    UPDATE loans SET outstanding_balance=v_new,status=CASE WHEN v_new=0 THEN 'COMPLETED' ELSE 'ACTIVE' END WHERE loan_id=p_loan_id;
   EXCEPTION WHEN NO_DATA_FOUND THEN ROLLBACK TO loan_payment; RAISE_APPLICATION_ERROR(-20113,'Loan or account not found.'); WHEN OTHERS THEN ROLLBACK TO loan_payment; RAISE; END;
   FUNCTION remaining_installments(p_loan_id NUMBER) RETURN NUMBER IS v_out NUMBER;v_emi NUMBER; BEGIN SELECT outstanding_balance,monthly_installment INTO v_out,v_emi FROM loans WHERE loan_id=p_loan_id; RETURN CASE WHEN v_out=0 THEN 0 ELSE CEIL(v_out/v_emi) END; EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20114,'Loan not found.'); END;
 END pkg_loan_operations;

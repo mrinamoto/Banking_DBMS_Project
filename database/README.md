@@ -1,158 +1,61 @@
-# Banking Database Management System (Oracle)
+# Oracle Database Guide
 
-## Introduction
+This directory contains the Oracle SQL and PL/SQL academic core of the Smart Banking Management System. The implemented entities are branches, customers, employees, application users, account types, accounts, bank transactions, fund transfers, loan types, loans, loan payments, and audit logs. Cards and beneficiaries are not implemented modules.
 
-This project is a simple Banking Database Management System developed using Oracle SQL and PL/SQL. It was created as a university DBMS project to understand how a banking system stores, manages, and processes data.
+## Requirement
 
-The project includes customer management, account management, transactions, loans, employees, cards, and other basic banking operations.
+- Oracle Database 19c or later, including Oracle Database Free
+- SQL*Plus, SQLcl, or Oracle SQL Developer
+- A dedicated empty project schema
 
----
+## Safe installation
 
-## Project Objectives
+From the repository root:
 
-The main objectives of this project are:
-
-- Learn Oracle Database
-- Design a relational database
-- Create tables with proper constraints
-- Perform SQL operations
-- Learn PL/SQL programming
-- Implement banking operations using procedures and functions
-
----
-
-## Software Used
-
-- Oracle Database 26ai
-- Oracle SQL Developer
-
----
-
-## Project Modules
-
-The project contains the following modules:
-
-- Customer Management
-- Account Management
-- Branch Management
-- Employee Management
-- Loan Management
-- Card Management
-- Transaction Management
-- User Management
-- Beneficiary Management
-
----
-
-## Database Objects
-
-The project includes different Oracle database objects such as:
-
-- Tables
-- Constraints
-- Views
-- Indexes
-- Functions
-- Procedures
-- Triggers
-- Packages
-
----
-
-## Folder Structure
-
-```
-BankingDBMS
-│
-├── sql
-│   ├── 01_create_tables.sql
-│   ├── 02_constraints.sql
-│   ├── 03_insert_sample_data.sql
-│   ├── 04_views.sql
-│   ├── 05_indexes.sql
-│   ├── 06_queries.sql
-│   ├── 07_functions.sql
-│   ├── 08_procedures.sql
-│   ├── 09_triggers.sql
-│   └── 10_packages.sql
-│
-├── tests
-│   ├── test_functions.sql
-│   ├── test_procedures.sql
-│   ├── test_triggers.sql
-│   ├── test_packages.sql
-│   └── test_queries.sql
-│
-├── docs
-│
-└── README.md
+```powershell
+sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
 ```
 
----
+`run_all.sql` uses `@@` so every child path is resolved relative to the installer file. Its order is:
 
-## How to Run
+1. `sql/01_create_tables.sql` — tables and `SEQ_BUSINESS_REFERENCE`
+2. `sql/02_constraints.sql` — additional cross-column constraints
+3. `sql/05_indexes.sql` — non-unique search/report indexes
+4. `sql/07_functions.sql` — balance, EMI, and number-generation functions
+5. `sql/11_packages.sql` — banking and loan package specifications/bodies
+6. `sql/08_procedures.sql` — compatibility procedure wrappers
+7. `sql/04_views.sql` — reporting views
+8. `sql/10_triggers.sql` — audit actor/function, audit triggers, immutable ledger protection
+9. `sql/03_insert_sample_data.sql` — fictional classroom data
+10. `USER_ERRORS` compiler report
 
-Run the SQL files in the following order:
+The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data.
 
-1. Create Tables
-2. Add Constraints
-3. Insert Sample Data
-4. Create Views
-5. Create Indexes
-6. Run SQL Queries
-7. Create Functions
-8. Create Procedures
-9. Create Triggers
-10. Create Packages
+## Transaction rule
 
-After that, run the files inside the **tests** folder to verify that everything is working correctly.
+Packages use validation, `SAVEPOINT`, `SELECT ... FOR UPDATE`, balance updates, and ledger inserts. They do not call `COMMIT`. Express commits once after the entire PL/SQL operation succeeds and rolls back after an error. This is the project's ACID boundary.
 
----
+## Tests
 
-## What I Learned
+After a successful fresh-schema installation:
 
-While developing this project, I learned:
+```sql
+@database/tests/acceptance_tests.sql
+```
 
-- Database design
-- Primary Key and Foreign Key relationships
-- SQL queries
-- Joins
-- Views
-- Indexes
-- PL/SQL
-- Functions
-- Stored Procedures
-- Triggers
-- Packages
+The suite checks exact expected Oracle error codes and rolls all test data back. The five smaller `test_*.sql` files are current smoke tests and do not contain old schema names.
 
-This project helped me improve my understanding of Oracle Database and practical DBMS concepts.
+Verify compilation:
 
----
+```sql
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE status <> 'VALID'
+ORDER BY object_type, object_name;
 
-## Future Improvements
+SELECT name, type, line, position, text
+FROM user_errors
+ORDER BY name, sequence;
+```
 
-If this project is developed further, the following features can be added:
-
-- Internet Banking
-- ATM Module
-- Mobile Banking
-- Online Bill Payment
-- SMS/Email Notification
-- Audit Log
-- User Authentication
-
----
-
-## Author
-
-**Md Iftekhar Alam Asif**
-**Mrinmoy**
-**Onamica**
-
-Department of Computer Science and Engineering
-
-Daffodil International University
-
----
-
-This project was developed for learning purposes as part of a Database Management System course.
+Oracle execution evidence is pending until these commands are run against the student's local schema.

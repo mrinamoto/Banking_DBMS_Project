@@ -1,4 +1,53 @@
-import {useEffect,useState} from "react";import {Plus,Search} from "lucide-react";import api,{messageFrom} from "../services/api";import {PageHeader,Loading,Empty,ErrorBox,Status} from "../components/UI";import {useAuth} from "../context/AuthContext";
-/* eslint-disable react-hooks/exhaustive-deps */
-const initial={firstName:'',lastName:'',dateOfBirth:'',gender:'',phone:'',email:'',nationalId:'',address:'',occupation:'',annualIncome:''};
-export default function Customers(){const {user}=useAuth();const [data,setData]=useState(null),[search,setSearch]=useState(''),[form,setForm]=useState(initial),[open,setOpen]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');async function load(){try{const r=await api.get('/customers',{params:{search}});setData(r.data);setError('')}catch(e){setError(messageFrom(e))}}useEffect(()=>{const id=setTimeout(load,250);return()=>clearTimeout(id)},[search]);async function submit(e){e.preventDefault();try{await api.post('/customers',form);setForm(initial);setOpen(false);setNotice('Customer registered successfully.');load()}catch(err){setError(messageFrom(err))}}if(!data&&!error)return <Loading/>;return <><PageHeader title="Customers" subtitle="Search, register, and review customer profiles" action={user.role!=='CUSTOMER'&&<button className="btn-primary flex gap-2" onClick={()=>setOpen(!open)}><Plus size={18}/>Register customer</button>}/>{notice&&<div className="mb-4 rounded-lg bg-emerald-50 p-3 text-emerald-700">{notice}</div>}<ErrorBox message={error}/>{open&&<form onSubmit={submit} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{Object.keys(initial).map(key=><label className={`field ${key==='address'?'sm:col-span-2':''}`} key={key}>{key.replace(/([A-Z])/g,' $1').replace(/^./,x=>x.toUpperCase())}<input type={key==='dateOfBirth'?'date':key==='email'?'email':key==='annualIncome'?'number':'text'} required={['firstName','lastName','dateOfBirth','phone','nationalId','address'].includes(key)} value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/></label>)}<div className="sm:col-span-2 lg:col-span-3 flex gap-3"><button className="btn-primary">Save customer</button><button type="button" className="btn-secondary" onClick={()=>setOpen(false)}>Cancel</button></div></form>}<div className="relative mb-4"><Search className="absolute left-3 top-3 text-slate-400" size={18}/><input className="input w-full pl-10" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, or national ID"/></div>{!data?.items.length?<Empty/>:<div className="table-wrap"><table className="data-table"><thead><tr><th>Name</th><th>Phone</th><th>National ID</th><th>Email</th><th>Status</th></tr></thead><tbody>{data.items.map(c=><tr key={c.CUSTOMER_ID}><td className="font-semibold">{c.FIRST_NAME} {c.LAST_NAME}</td><td>{c.PHONE}</td><td>{c.NATIONAL_ID}</td><td>{c.EMAIL||'—'}</td><td><Status value={c.STATUS}/></td></tr>)}</tbody></table></div>}</>}
+import { useEffect, useState } from "react";
+import { Plus, Search } from "lucide-react";
+import api, { messageFrom } from "../services/api";
+import { Empty, ErrorBox, Loading, PageHeader, Pagination, Status } from "../components/UI";
+import { useAuth } from "../context/AuthContext";
+
+const initial = { firstName: "", lastName: "", dateOfBirth: "", gender: "", phone: "", email: "", nationalId: "", address: "", occupation: "", annualIncome: "" };
+
+export default function Customers() {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [form, setForm] = useState(initial);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function load() {
+    try { const result = await api.get("/customers", { params: { search: appliedSearch, page } });setData(result.data);setError(""); }
+    catch (requestError) { setError(messageFrom(requestError)); }
+  }
+  useEffect(() => { load(); }, [page, appliedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function submit(event) {
+    event.preventDefault();
+    try { await api.post("/customers", form);setForm(initial);setOpen(false);setNotice("Customer registered successfully.");await load(); }
+    catch (requestError) { setError(messageFrom(requestError)); }
+  }
+  if (!data && !error) return <Loading />;
+  return <>
+    <PageHeader title="Customers" subtitle="Search, register, and review customer profiles" action={user.role !== "CUSTOMER" && <button className="btn-primary flex gap-2" onClick={() => setOpen(!open)}><Plus size={18} />Register customer</button>} />
+    {notice && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-emerald-700">{notice}</div>}
+    <ErrorBox message={error} />
+    {open && <form onSubmit={submit} className="card mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label className="field">First name<input required value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} /></label>
+      <label className="field">Last name<input required value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} /></label>
+      <label className="field">Date of birth<input type="date" required value={form.dateOfBirth} onChange={(event) => setForm({ ...form, dateOfBirth: event.target.value })} /></label>
+      <label className="field">Gender<select value={form.gender} onChange={(event) => setForm({ ...form, gender: event.target.value })}><option value="">Prefer not to say</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option></select></label>
+      <label className="field">Phone<input required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label>
+      <label className="field">Email<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+      <label className="field">National ID<input required value={form.nationalId} onChange={(event) => setForm({ ...form, nationalId: event.target.value })} /></label>
+      <label className="field sm:col-span-2">Address<input required value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+      <label className="field">Occupation<input value={form.occupation} onChange={(event) => setForm({ ...form, occupation: event.target.value })} /></label>
+      <label className="field">Annual income<input type="number" min="0" value={form.annualIncome} onChange={(event) => setForm({ ...form, annualIncome: event.target.value })} /></label>
+      <div className="flex gap-3 sm:col-span-2 lg:col-span-3"><button className="btn-primary">Save customer</button><button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button></div>
+    </form>}
+    <div className="relative mb-4"><Search className="absolute left-3 top-3 text-slate-400" size={18} /><input className="input w-full pl-10" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setPage(1);setAppliedSearch(search); } }} placeholder="Search name, phone, or national ID" /></div>
+    {!data?.items.length ? <Empty /> : <div className="table-wrap"><table className="data-table"><thead><tr><th>Name</th><th>Phone</th><th>National ID</th><th>Email</th><th>Status</th></tr></thead><tbody>{data.items.map((customer) => <tr key={customer.CUSTOMER_ID}><td className="font-semibold">{customer.FIRST_NAME} {customer.LAST_NAME}</td><td>{customer.PHONE}</td><td>{customer.NATIONAL_ID}</td><td>{customer.EMAIL || "—"}</td><td><Status value={customer.STATUS} /></td></tr>)}</tbody></table></div>}
+    {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPage={setPage} />}
+  </>;
+}
