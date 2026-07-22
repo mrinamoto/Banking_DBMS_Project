@@ -1,0 +1,7 @@
+/* eslint-disable react/only-export-components */
+export function PageHeader({title,subtitle,action}){return <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>{subtitle&&<p className="mt-1 text-sm text-slate-500">{subtitle}</p>}</div>{action}</div>}
+export function Loading(){return <div className="card text-slate-500" role="status">Loading bank records…</div>}
+export function Empty({text="No records match your filters."}){return <div className="card text-center text-slate-500">{text}</div>}
+export function ErrorBox({message}){return message?<div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{message}</div>:null}
+export function Status({value}){const tone={ACTIVE:'bg-emerald-100 text-emerald-700',SUCCESS:'bg-emerald-100 text-emerald-700',APPROVED:'bg-emerald-100 text-emerald-700',COMPLETED:'bg-emerald-100 text-emerald-700',PENDING:'bg-amber-100 text-amber-700',FROZEN:'bg-blue-100 text-blue-700',BLOCKED:'bg-red-100 text-red-700',REJECTED:'bg-red-100 text-red-700',CLOSED:'bg-slate-200 text-slate-700'};return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tone[value]||'bg-slate-100 text-slate-700'}`}>{value}</span>}
+export const money=value=>new Intl.NumberFormat('en-BD',{style:'currency',currency:'BDT',maximumFractionDigits:2}).format(Number(value||0));

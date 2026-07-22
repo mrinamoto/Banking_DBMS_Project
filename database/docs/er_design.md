@@ -341,23 +341,23 @@ ACCOUNT_TYPES
 
 ✅ ER Design Completed
 
-⬜ Database Schema Design
+✅ Database Schema Design
 
-⬜ Oracle Table Creation
+✅ Oracle Table Creation
 
-⬜ Constraints
+✅ Constraints
 
-⬜ Sample Data
+✅ Sample Data
 
-⬜ Views
+✅ Views
 
-⬜ PL/SQL
+✅ PL/SQL
 
-⬜ Triggers
+✅ Triggers
 
-⬜ Testing
+✅ Testing
 
-⬜ Documentation
+✅ Documentation
 
 ---
 

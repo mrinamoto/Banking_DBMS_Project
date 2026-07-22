@@ -1,0 +1,2 @@
+import {useState} from "react";import Sidebar from "./Sidebar";import Navbar from "./Navbar";
+export default function Layout({children}){const [open,setOpen]=useState(false);return <div className="min-h-screen bg-slate-100"><Sidebar open={open} onClose={()=>setOpen(false)}/><div className="lg:pl-64"><Navbar onMenu={()=>setOpen(true)}/><main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main></div></div>}

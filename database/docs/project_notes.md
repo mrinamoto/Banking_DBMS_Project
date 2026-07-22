@@ -149,67 +149,34 @@ ACCOUNT_STATUS
 Step 1
 Requirement Analysis
 
-✔ Completed
-
 Step 2
 ER Diagram
-
-Pending
 
 Step 3
 Database Schema Design
 
-Pending
-
 Step 4
 Oracle Table Creation
-
-Pending
 
 Step 5
 Constraints
 
-Pending
-
 Step 6
 Insert Sample Data
-
-Pending
 
 Step 7
 Views
 
-Pending
-
 Step 8
 PL/SQL Procedures
-
-Pending
 
 Step 9
 Triggers
 
-Pending
-
 Step 10
 Testing
-
-Pending
 
 Step 11
 Documentation
 
-Pending
 
----
-
-# Project Status
-
-Current Phase:
-Requirement Analysis
-
-Next Task:
-Design the ER Diagram
-
-Project Progress:
-10%

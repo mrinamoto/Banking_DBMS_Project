@@ -1,0 +1,3 @@
+# Normalization
+
+UNF would store a customer, branch, multiple accounts, transactions, loans, and payments in one repeating record. In 1NF, every column is atomic and repeating accounts/transactions/payments become rows. In 2NF, facts depend on their complete keys: account-type limits move out of accounts and loan payments move out of loans. In 3NF, non-key facts depend only on their entity key: branch address is stored only in `BRANCHES`, customer details only in `CUSTOMERS`, loan rules only in `LOAN_TYPES`, and user credentials only in `USERS`. `FUND_TRANSFERS` resolves the account-to-account relationship while immutable transaction rows preserve history.
