@@ -7,6 +7,18 @@ const bankingRoutes = require("./routes/bankingRoutes");
 const { notFound, errorHandler } = require("./middleware/errors");
 const { getConnection } = require("./config/db");
 
+const { initializePool } = require("./config/db");
+
+initializePool()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log("Server Started");
+    });
+  })
+  .catch((err) => {
+    console.error(err);
+  });
+
 function createApp() {
   const app = express();
   const allowedOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
@@ -35,4 +47,5 @@ function createApp() {
   return app;
 }
 
+await initializePool();
 module.exports = createApp;

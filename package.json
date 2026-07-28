@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "enhanced-resolve": "^5.24.3"
+  },
+  "dependencies": {
+    "oracledb": "^7.0.1"
   }
 }
