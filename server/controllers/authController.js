@@ -1,7 +1,23 @@
 const { getConnection } = require("../config/db");
-const { verifyPassword } = require("../utils/passwords");
+const oracledb = require("oracledb");
+const { hashPassword, verifyPassword } = require("../utils/passwords");
 const { signToken } = require("../utils/tokens");
 const { requireFields, withConnection } = require("../utils/http");
+
+function normalizeUsername(username) {
+  return String(username || "").trim().toLowerCase();
+}
+
+function profileFromRow(user) {
+  return {
+    id: user.USER_ID,
+    username: user.USERNAME,
+    role: user.ROLE,
+    customerId: user.CUSTOMER_ID,
+    employeeId: user.EMPLOYEE_ID,
+    branchId: user.BRANCH_ID,
+  };
+}
 
 async function login(req, res, next) {
   try {
@@ -28,13 +44,118 @@ async function login(req, res, next) {
       }
       await connection.execute("UPDATE users SET last_login = SYSTIMESTAMP, failed_login_count = 0 WHERE user_id = :id", { id: user.USER_ID });
       await connection.commit();
-      const profile = { id: user.USER_ID, username: user.USERNAME, role: user.ROLE, customerId: user.CUSTOMER_ID, employeeId: user.EMPLOYEE_ID, branchId: user.BRANCH_ID };
+      const profile = profileFromRow(user);
       res.json({ token: signToken(profile), user: profile });
     });
   } catch (error) { next(error); }
 }
 
+async function register(req, res, next) {
+  let connection;
+  try {
+    requireFields(req.body, [
+      "firstName",
+      "lastName",
+      "dateOfBirth",
+      "phone",
+      "nationalId",
+      "address",
+      "username",
+      "password",
+    ]);
+
+    const username = normalizeUsername(req.body.username);
+    if (!/^[a-z0-9._-]{4,50}$/.test(username)) {
+      const error = new Error("Username must be 4-50 characters using letters, numbers, dots, underscores, or hyphens.");
+      error.status = 400;
+      throw error;
+    }
+
+    const passwordHash = await hashPassword(req.body.password);
+    connection = await getConnection();
+
+    const existing = await connection.execute(
+      `SELECT 1
+         FROM users
+        WHERE LOWER(username) = :username
+        UNION ALL
+       SELECT 1
+         FROM customers
+        WHERE phone = :phone
+           OR national_id = :nationalId
+           OR (:email IS NOT NULL AND LOWER(email) = LOWER(:email))`,
+      {
+        username,
+        phone: req.body.phone.trim(),
+        nationalId: req.body.nationalId.trim(),
+        email: req.body.email ? req.body.email.trim() : null,
+      }
+    );
+
+    if (existing.rows.length) {
+      const error = new Error("An account already exists with this username, phone, email, or national ID.");
+      error.status = 400;
+      throw error;
+    }
+
+    const customerResult = await connection.execute(
+      `INSERT INTO customers(
+          first_name, last_name, date_of_birth, gender, phone, email,
+          national_id, address, occupation, annual_income
+        )
+        VALUES(
+          :firstName, :lastName, TO_DATE(:dateOfBirth,'YYYY-MM-DD'), :gender,
+          :phone, :email, :nationalId, :address, :occupation, :annualIncome
+        )
+        RETURNING customer_id INTO :customerId`,
+      {
+        firstName: req.body.firstName.trim(),
+        lastName: req.body.lastName.trim(),
+        dateOfBirth: req.body.dateOfBirth,
+        gender: req.body.gender || null,
+        phone: req.body.phone.trim(),
+        email: req.body.email ? req.body.email.trim() : null,
+        nationalId: req.body.nationalId.trim(),
+        address: req.body.address.trim(),
+        occupation: req.body.occupation ? req.body.occupation.trim() : null,
+        annualIncome: Number(req.body.annualIncome || 0),
+        customerId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+      }
+    );
+
+    const customerId = customerResult.outBinds.customerId[0];
+    const userResult = await connection.execute(
+      `INSERT INTO users(customer_id, username, password_hash, role)
+       VALUES(:customerId, :username, :passwordHash, 'CUSTOMER')
+       RETURNING user_id INTO :userId`,
+      {
+        customerId,
+        username,
+        passwordHash,
+        userId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+      }
+    );
+
+    await connection.commit();
+
+    const profile = {
+      id: userResult.outBinds.userId[0],
+      username,
+      role: "CUSTOMER",
+      customerId,
+      employeeId: null,
+      branchId: null,
+    };
+    res.status(201).json({ token: signToken(profile), user: profile, message: "Customer account created." });
+  } catch (error) {
+    if (connection) await connection.rollback();
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
 function me(req, res) { res.json({ user: req.user }); }
 function logout(req, res) { res.status(204).end(); }
 
-module.exports = { login, me, logout };
+module.exports = { login, register, me, logout };

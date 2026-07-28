@@ -1,118 +1,172 @@
-# Smart Banking Management System Using Oracle SQL
+﻿# Smart Banking Management System
 
-An academic banking simulation built around Oracle SQL and PL/SQL. React provides a responsive dashboard; Express exposes a parameterized, role-protected REST API; Oracle packages own banking validation, row locking, ledger creation, and loan calculations.
+An academic, production-like Banking Management System built with React, Express.js, and Oracle Database Free in Oracle Cloud. The project keeps Oracle SQL and PL/SQL at the center of the system, including tables, constraints, indexes, views, packages, procedures, triggers, audit logs, and transactional banking operations.
 
-## Features and roles
+## Features
 
-- Admin: branches, staff visibility, customers, accounts, transactions, loans, reports, and audit APIs.
-- Manager: operations, employees, accounts, transactions, loans, and decisions for the manager's assigned branch.
-- Employee: institution-wide customer registration, followed by account/financial/loan operations only for the employee's assigned branch.
-- Customer: own accounts, transactions, transfers, loans, and limited profile changes.
+- Four roles: Admin, Manager, Employee, Customer.
+- Customer registration and secure login through Oracle-backed API endpoints.
+- Password hashing with Node.js `crypto.scrypt`.
+- JWT authentication for protected API routes.
+- Backend role and branch/customer scope checks.
+- Customer, employee, branch, account, loan, transaction, report, audit, and settings screens.
+- Open account, deposit, withdraw, transfer, freeze account, activate account, loan application, approval, rejection, and payment workflows.
+- Oracle audit logging through database triggers.
+- Beginner-friendly setup and deployment documentation.
 
-Core modules include branches, employees, customers, account types/accounts, deposit, withdrawal, atomic transfer, transaction receipts/history, loan types/applications/decisions/payments, reports, users, RBAC, and audit history.
+## Technology
 
-## Stack
+- Frontend: React, Vite, Tailwind CSS, Axios, Lucide React.
+- Backend: Node.js, Express.js, Oracle `oracledb`.
+- Database: Oracle Database Free in Oracle Cloud.
+- Deployment: Vercel for frontend, Render for backend.
 
-- Oracle Database 19c+ / Oracle Free, SQL, PL/SQL, `oracledb` 7
-- Node.js 20+ and Express 5
-- React 19, Vite 8, Tailwind CSS 4, Axios, Lucide
-- Signed eight-hour bearer sessions; Node `scrypt` password hashes
+## Architecture
 
-## Folder structure
+```mermaid
+flowchart LR
+  Browser["Web Browser"] --> Vercel["React + Vite on Vercel"]
+  Vercel --> API["Express API on Render"]
+  API --> Auth["JWT Auth + Role Checks"]
+  Auth --> Oracle["Oracle Database Free"]
+  Oracle --> PLSQL["PL/SQL Packages, Procedures, Triggers"]
+```
+
+## Folder Structure
 
 ```text
-client/          React UI
-server/          Express API and Oracle pool
-database/sql/    Ordered Oracle schema/object scripts
-database/tests/  Rollback-based manual database tests
-docs/            Design, testing, setup, demo, presentation, and viva guides
+client/      React frontend
+server/      Express backend and Oracle connection
+database/    Oracle SQL, PL/SQL, tests, and schema installer
+docs/        Beginner setup, deployment, API, and workflow guides
 ```
 
-## Windows PowerShell setup
+## Installation
 
-Prerequisites: Node.js 20+, npm, Oracle Database 19c+ (or Oracle Free), and SQLcl/SQL*Plus or SQL Developer.
-
-```powershell
-Copy-Item server\.env.example server\.env
-notepad server\.env
-Set-Location server
+```bash
 npm install
-Set-Location ..\client
-npm install
+npm --prefix client install
+npm --prefix server install
 ```
 
-Set `DB_USER`, `DB_PASSWORD`, `DB_CONNECT_STRING`, and a random `SESSION_SECRET` of at least 32 characters. Never commit `server/.env`.
+Configure `server/.env` from `server/.env.example`, then run:
 
-Install the dedicated Oracle schema from the project root:
-
-```powershell
-sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
+```bash
+npm --prefix server start
+npm --prefix client run dev
 ```
 
-`run_all.sql` uses child-relative `@@` paths and deliberately excludes destructive cleanup and optional DBA role grants. Exact order: tables/sequence, extra constraints, indexes, functions, packages, compatibility procedures, views, audit triggers, sample data, compiler report. Check `USER_ERRORS` after compilation.
+## Oracle Setup
 
-Start both processes in separate PowerShell windows:
-
-```powershell
-Set-Location server
-npm start
-```
-
-```powershell
-Set-Location client
-npm run dev
-```
-
-Open `http://localhost:5173`. The Vite server proxies `/api` to port 5000.
-
-## Demo users
-
-No password is stored in this repository. Generate a hash for a temporary demo password:
-
-```powershell
-Set-Location server
-npm run demo-hash -- "choose-a-temporary-10-character-password"
-```
-
-Insert the printed hash into `USERS` with SQL Developer. Link managers/employees using `EMPLOYEE_ID`, customers using `CUSTOMER_ID`, and leave both null for an admin. Valid roles are `ADMIN`, `MANAGER`, `EMPLOYEE`, and `CUSTOMER`. Delete or disable demo users after presentation.
+Use Oracle Database Free in Oracle Cloud. Create an application database user such as `BANK_APP`, grant the required Oracle privileges, then run:
 
 ```sql
-INSERT INTO users(username,password_hash,role,is_active)
-VALUES ('faculty_admin', '<paste-generated-hash>', 'ADMIN', 'Y');
-COMMIT;
+@database/run_all.sql
 ```
 
-## Checks
+Create demo users after sample data is installed:
 
-```powershell
-Set-Location client
-npm run lint
-npm run build
-Set-Location ..\server
-npm run check
+```bash
+npm --prefix server run seed:demo-users -- ClassroomPass123
 ```
 
-Run `database/tests/acceptance_tests.sql` only in a disposable project schema. It uses savepoints and rollback for financial tests.
+See `docs/ORACLE_DATABASE_FREE_SETUP.md` for the full cloud guide.
 
-## Important design rule
+## Deployment
 
-PL/SQL packages validate and mutate data but do not commit. Express commits once after the complete package call succeeds and rolls back on any error. This makes transfer, loan disbursement, and loan payment atomic. Managers and employees are checked against `req.user.branchId`; a staff transfer is allowed only when the source account belongs to that branch. Customer ownership is checked independently.
+- Deploy `client` to Vercel with `VITE_API_URL=https://your-render-service.onrender.com/api`.
+- Deploy `server` to Render with Oracle environment variables.
+- Keep all credentials in environment variables.
+- Do not install Oracle locally for demonstration.
 
-The dashboard metric **Operational Transaction Volume** counts deposits, withdrawals, transfer debits, loan disbursements, and loan payments. It excludes transfer credits so one transfer is not counted twice.
+See `docs/VERCEL_DEPLOYMENT.md` and `docs/RENDER_DEPLOYMENT.md`.
 
-Logout removes the bearer token from browser storage. This classroom implementation has no server-side token revocation list; an already copied token remains valid until its eight-hour expiry. Use a new `SESSION_SECRET` to invalidate all tokens during a security reset.
+## Screenshots Placeholder
 
-## Known limitations
+- `[Screenshot: animated login/signup screen]`
+- `[Screenshot: admin dashboard]`
+- `[Screenshot: account management table]`
+- `[Screenshot: transaction receipt]`
+- `[Screenshot: loan approval workflow]`
+- `[Screenshot: audit log]`
 
-- Oracle runtime compilation was not available during the Codex pass and must be performed locally.
-- Demo user creation is intentionally manual so no shared password enters source control.
-- Chart rendering and browser automation are not included. Oracle compilation, four-role runtime tests, and desktop/tablet/mobile visual evidence remain pending locally.
-- This is an academic simulation, not production banking software.
+## Testing
 
-## Team
+```bash
+npm run client:lint
+npm run client:build
+npm run server:check
+npm run server:test
+```
 
-Md Iftekhar Alam Asif, Mrinmoy, Onamica. Add student IDs and faculty/course details before submission.
+Database acceptance tests:
 
-## Future scope
+```sql
+@database/tests/acceptance_tests.sql
+```
 
-Optional future academic improvements: notification simulation, maker-checker approvals, statement export, more automated tests, and deployment hardening. Real payment networks, OTP/SMS, cards, crypto, biometrics, and mobile apps are outside scope.
+## ER Diagram
+
+```mermaid
+erDiagram
+  BRANCHES ||--o{ EMPLOYEES : employs
+  BRANCHES ||--o{ ACCOUNTS : hosts
+  CUSTOMERS ||--o{ ACCOUNTS : owns
+  CUSTOMERS ||--o| USERS : logs_in_as
+  EMPLOYEES ||--o| USERS : logs_in_as
+  ACCOUNT_TYPES ||--o{ ACCOUNTS : classifies
+  LOAN_TYPES ||--o{ LOANS : classifies
+  CUSTOMERS ||--o{ LOANS : requests
+  ACCOUNTS ||--o{ TRANSACTIONS : records
+  ACCOUNTS ||--o{ FUND_TRANSFERS : participates
+  LOANS ||--o{ LOAN_PAYMENTS : receives
+```
+
+## Relational Schema
+
+- `branches(branch_id, branch_code, branch_name, city, address, phone, swift_code, status, created_at)`
+- `customers(customer_id, first_name, last_name, date_of_birth, phone, email, national_id, address, status)`
+- `employees(employee_id, branch_id, employee_code, job_title, email, salary, status)`
+- `users(user_id, customer_id, employee_id, username, password_hash, role, is_active, last_login)`
+- `accounts(account_id, account_number, customer_id, branch_id, account_type_id, balance, status)`
+- `loans(loan_id, loan_number, customer_id, loan_type_id, requested_amount, status)`
+- `transactions(transaction_id, account_id, transaction_type, amount, reference_no, processed_by)`
+- `audit_log(audit_id, table_name, record_id, action_name, action_by, action_date)`
+
+## Normalization
+
+- First Normal Form: atomic columns and no repeating groups.
+- Second Normal Form: non-key values depend on full primary keys.
+- Third Normal Form: lookup data such as account types, loan types, and branches are separated from transaction tables.
+- Referential integrity is enforced with foreign keys and role/principal constraints.
+
+## Project Workflow
+
+1. Browser loads React from Vercel.
+2. React sends API calls to Express on Render.
+3. Express validates JWT and role permissions.
+4. Express calls Oracle SQL or PL/SQL.
+5. Oracle enforces constraints, triggers, and transaction rules.
+6. React renders tables, forms, receipts, reports, and dashboard statistics.
+
+## Future Scope
+
+- Password reset through email.
+- Two-factor authentication.
+- Export reports as PDF.
+- More detailed teller cash drawer workflow.
+- Admin UI for creating staff login users.
+- Rate limiting and production monitoring.
+
+## Viva Questions
+
+- Why did the project keep Oracle instead of PostgreSQL?
+- What is the difference between authentication and authorization?
+- Why should role checks happen on the backend?
+- How does JWT protect API requests?
+- Why are passwords hashed instead of encrypted?
+- How do Oracle triggers support audit logging?
+- Why are transactions important for transfer operations?
+- What does normalization improve in this schema?
+- How can Oracle Database Free be used without local installation?
+- How do Vercel, Render, and Oracle Cloud work together?

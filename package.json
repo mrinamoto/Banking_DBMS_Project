@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "client:lint": "npm --prefix client run lint",
+    "server:start": "npm --prefix server start",
+    "server:check": "npm --prefix server run check",
+    "server:test": "npm --prefix server test"
+  },
+  "devDependencies": {
+    "enhanced-resolve": "^5.24.3"
+  }
+}

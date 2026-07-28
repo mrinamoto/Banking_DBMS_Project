@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "check": "node scripts/check-all-js.js",
     "test": "node --test",
-    "demo-hash": "node scripts/generate-demo-hash.js"
+    "demo-hash": "node scripts/generate-demo-hash.js",
+    "seed:demo-users": "node scripts/create-demo-users.js"
   },
   "keywords": [],
   "author": "",
