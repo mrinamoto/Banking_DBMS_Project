@@ -15,13 +15,19 @@ coverage/
 server/.env
 server/.env.*
 !server/.env.example
+client/.env
+client/.env.local
 *.pem
 *.key
 *.p12
 *.pfx
 *.sso
+cwallet.sso
+ewallet.p12
+ewallet.pem
 wallet/
 Wallet_*/
+network/admin/
 
 # Logs and editor files
 *.log

@@ -1,4 +1,4 @@
-# Render Deployment
+﻿# Render Deployment
 
 Deploy only the Express backend to Render.
 
@@ -40,7 +40,7 @@ If your Autonomous Database requires mTLS, upload the wallet securely as Render 
 
 ## Screenshot Placeholders
 
-- `[Screenshot: Render web service settings]`
-- `[Screenshot: Render environment variables]`
-- `[Screenshot: Render deploy logs]`
-- `[Screenshot: /api/health response]`
+- `Optional evidence screenshot (if captured): Render web service settings`
+- `Optional evidence screenshot (if captured): Render environment variables`
+- `Optional evidence screenshot (if captured): Render deploy logs`
+- `Optional evidence screenshot (if captured): /api/health response`

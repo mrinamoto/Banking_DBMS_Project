@@ -1,4 +1,4 @@
-# Vercel Deployment
+﻿# Vercel Deployment
 
 Deploy only the React Vite frontend to Vercel.
 
@@ -29,7 +29,7 @@ VITE_API_URL=https://your-render-service.onrender.com/api
 
 ## Screenshot Placeholders
 
-- `[Screenshot: Vercel import project]`
-- `[Screenshot: Vercel root directory set to client]`
-- `[Screenshot: Vercel VITE_API_URL variable]`
-- `[Screenshot: deployed login page]`
+- `Optional evidence screenshot (if captured): Vercel import project`
+- `Optional evidence screenshot (if captured): Vercel root directory set to client`
+- `Optional evidence screenshot (if captured): Vercel VITE_API_URL variable`
+- `Optional evidence screenshot (if captured): deployed login page`

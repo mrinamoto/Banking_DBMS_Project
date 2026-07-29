@@ -72,6 +72,8 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       if (localStorage.getItem("bank_token")) await api.post("/auth/logout");
+    } catch {
+      // Local session cleanup is still authoritative if the API is unavailable.
     } finally {
       clearSession();
       setUser(null);

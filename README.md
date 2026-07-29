@@ -41,36 +41,49 @@ database/    Oracle SQL, PL/SQL, tests, and schema installer
 docs/        Beginner setup, deployment, API, and workflow guides
 ```
 
-## Installation
+## Local Windows setup
 
-```bash
+Install Git, Node.js 20 or newer, npm, and an accessible Oracle Database Free/Autonomous Database. From PowerShell:
+
+```powershell
+git clone <repository-url>
+Set-Location Banking_DBMS_Project
 npm install
 npm --prefix client install
 npm --prefix server install
+Copy-Item server\.env.example server\.env
 ```
 
-Configure `server/.env` from `server/.env.example`, then run:
+Edit `server/.env` locally. `PORT` is the API port, `CLIENT_ORIGIN` is the browser origin, `DB_USER`, `DB_PASSWORD`, and `DB_CONNECT_STRING` identify the Oracle application schema, `DB_POOL_MIN/MAX` tune the pool, and `SESSION_SECRET` must be at least 32 random characters. If Autonomous Database mTLS is required, set the optional wallet directory/password variables and keep the wallet outside Git. Never paste these values into source files.
 
-```bash
-npm --prefix server start
-npm --prefix client run dev
+The Vite development proxy sends `/api` to `http://localhost:5000`, so `client/.env.local` is normally unnecessary. For a separately hosted frontend, create `client/.env.local` with `VITE_API_URL=https://your-api-host.example/api`.
+
+Test configuration and start the two processes in separate PowerShell windows:
+
+```powershell
+npm --prefix server run db:test
+npm run server:start
+npm run client:dev
 ```
 
-## Oracle Setup
+Open `http://localhost:5173/login`; verify the backend at `http://localhost:5000/api/health`.
 
-Use Oracle Database Free in Oracle Cloud. Create an application database user such as `BANK_APP`, grant the required Oracle privileges, then run:
+## Oracle setup and repair
+
+Use a dedicated classroom schema. After confirming the schema is empty or safe to initialize, connect as the application user and run `@database/run_all.sql`. This installer does not run the destructive `database/sql/00_drop_objects.sql`. Then inspect invalid objects and errors:
 
 ```sql
-@database/run_all.sql
+SELECT object_type, status, COUNT(*)
+FROM user_objects
+GROUP BY object_type, status
+ORDER BY object_type, status;
+
+SELECT name, type, line, position, text
+FROM user_errors
+ORDER BY name, sequence;
 ```
 
-Create demo users after sample data is installed:
-
-```bash
-npm --prefix server run seed:demo-users -- ClassroomPass123
-```
-
-See `docs/ORACLE_DATABASE_FREE_SETUP.md` for the full cloud guide.
+Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Create temporary role users with `npm --prefix server run seed:demo-users -- <temporary-password>` and remove them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
 
 ## Deployment
 
@@ -80,15 +93,6 @@ See `docs/ORACLE_DATABASE_FREE_SETUP.md` for the full cloud guide.
 - Do not install Oracle locally for demonstration.
 
 See `docs/VERCEL_DEPLOYMENT.md` and `docs/RENDER_DEPLOYMENT.md`.
-
-## Screenshots Placeholder
-
-- `[Screenshot: animated login/signup screen]`
-- `[Screenshot: admin dashboard]`
-- `[Screenshot: account management table]`
-- `[Screenshot: transaction receipt]`
-- `[Screenshot: loan approval workflow]`
-- `[Screenshot: audit log]`
 
 ## Testing
 
@@ -104,6 +108,8 @@ Database acceptance tests:
 ```sql
 @database/tests/acceptance_tests.sql
 ```
+
+Common fixes: free ports 5000/5173 before restarting; check every required `.env` variable without printing its value; verify the Oracle service name and database availability; keep `CLIENT_ORIGIN` aligned with the browser origin; use `VITE_API_URL` only when the frontend is not using the Vite proxy; reinstall dependencies with the existing lock files if packages are mismatched; and clear an expired `bank_token`/`bank_user` session by signing out or using a private browser window.
 
 ## ER Diagram
 

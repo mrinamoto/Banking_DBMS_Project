@@ -122,6 +122,12 @@ export default function AnimatedAuth({ initialMode = "login" }) {
 
   function updateSignup(key, value) {
     setSignupForm((current) => ({ ...current, [key]: value }));
+    if (error) setError("");
+  }
+
+  function updateLogin(key, value) {
+    setLoginForm((current) => ({ ...current, [key]: value }));
+    if (error) setError("");
   }
 
   function switchMode(nextMode) {
@@ -177,7 +183,7 @@ export default function AnimatedAuth({ initialMode = "login" }) {
       <div className="auth-background-orb auth-background-orb-one" aria-hidden="true" />
       <div className="auth-background-orb auth-background-orb-two" aria-hidden="true" />
       <section className={`auth-container ${isSignup ? "auth-is-signup" : ""}`} aria-label="Smart Banking authentication">
-        <section className="auth-form-panel auth-login-panel" aria-hidden={isSignup} inert={isSignup ? "" : undefined}>
+        <section className="auth-form-panel auth-login-panel" aria-hidden={isSignup} inert={isSignup}>
           <div className="auth-form-scroll">
             <MobileBrand />
             <p className="auth-kicker">Secure account access</p>
@@ -187,11 +193,11 @@ export default function AnimatedAuth({ initialMode = "login" }) {
             <form className="auth-form auth-login-form" onSubmit={submitLogin} noValidate>
               <div className="auth-field">
                 <label htmlFor="login-username">Username</label>
-                <input id="login-username" autoComplete="username" required value={loginForm.username} onChange={(event) => setLoginForm({ ...loginForm, username: event.target.value })} />
+                <input id="login-username" autoComplete="username" required value={loginForm.username} onChange={(event) => updateLogin("username", event.target.value)} />
               </div>
               <div className="auth-field">
                 <label htmlFor="login-password">Password</label>
-                <PasswordControl id="login-password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} visible={visible.login} onToggle={() => togglePassword("login")} autoComplete="current-password" />
+                <PasswordControl id="login-password" value={loginForm.password} onChange={(event) => updateLogin("password", event.target.value)} visible={visible.login} onToggle={() => togglePassword("login")} autoComplete="current-password" />
               </div>
               <SubmitButton busy={busy} disabled={authLoading} busyText="Signing in…" text="Sign in securely" icon={<ArrowRight />} />
             </form>
@@ -199,7 +205,7 @@ export default function AnimatedAuth({ initialMode = "login" }) {
           </div>
         </section>
 
-        <section className="auth-form-panel auth-signup-panel" aria-hidden={!isSignup} inert={!isSignup ? "" : undefined}>
+        <section className="auth-form-panel auth-signup-panel" aria-hidden={!isSignup} inert={!isSignup}>
           <div className="auth-form-scroll">
             <MobileBrand />
             <p className="auth-kicker">Customer registration</p>
