@@ -28,7 +28,7 @@ async function login(req, res, next) {
                 u.customer_id, u.employee_id, e.branch_id
            FROM users u LEFT JOIN employees e ON e.employee_id = u.employee_id
           WHERE LOWER(u.username) = LOWER(:username)`,
-        { username: req.body.username.trim() }
+        { username: normalizeUsername(req.body.username) }
       );
       const user = result.rows[0];
       const validPassword = user && await verifyPassword(req.body.password, user.PASSWORD_HASH);
@@ -67,6 +67,16 @@ async function register(req, res, next) {
     const username = normalizeUsername(req.body.username);
     if (!/^[a-z0-9._-]{4,50}$/.test(username)) {
       const error = new Error("Username must be 4-50 characters using letters, numbers, dots, underscores, or hyphens.");
+      error.status = 400;
+      throw error;
+    }
+    if (req.body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(req.body.email).trim())) {
+      const error = new Error("Enter a valid email address.");
+      error.status = 400;
+      throw error;
+    }
+    if (req.body.annualIncome !== undefined && req.body.annualIncome !== "" && (!Number.isFinite(Number(req.body.annualIncome)) || Number(req.body.annualIncome) < 0)) {
+      const error = new Error("Annual income must be zero or a positive number.");
       error.status = 400;
       throw error;
     }
@@ -149,6 +159,10 @@ async function register(req, res, next) {
     res.status(201).json({ token: signToken(profile), user: profile, message: "Customer account created." });
   } catch (error) {
     if (connection) await connection.rollback();
+    if (Number(error.errorNum) === 1) {
+      error.message = "An account already exists with this username, phone, email, or national ID.";
+      error.status = 400;
+    }
     next(error);
   } finally {
     if (connection) await connection.close();

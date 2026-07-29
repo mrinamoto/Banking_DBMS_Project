@@ -7,15 +7,18 @@ import Customers from "./pages/Customers";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Loans from "./pages/Loans";
-import Login from "./pages/Login";
+import AnimatedAuth from "./pages/AnimatedAuth";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function Protected() {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" />;
+  const { user, authLoading } = useAuth();
+  if (authLoading) {
+    return <main className="session-loading" role="status" aria-live="polite"><span className="session-spinner" />Verifying your secure session…</main>;
+  }
+  if (!user) return <Navigate to="/login" replace />;
   return (
     <Layout>
       <Routes>
@@ -40,8 +43,8 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Login initialMode="signup" />} />
+          <Route path="/login" element={<AnimatedAuth />} />
+          <Route path="/register" element={<AnimatedAuth initialMode="signup" />} />
           <Route path="/*" element={<Protected />} />
         </Routes>
       </AuthProvider>

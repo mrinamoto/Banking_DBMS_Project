@@ -1,8 +1,5 @@
 require("dotenv").config();
 
-console.log(process.env.DB_USER);
-console.log(process.env.DB_CONNECT_STRING);
-
 const { getConnection } = require("./config/db");
 
 async function testConnection() {
@@ -11,18 +8,17 @@ async function testConnection() {
   try {
     connection = await getConnection();
 
-    console.log("✅ Database Connected Successfully!");
+    console.log("Database connection succeeded.");
 
     const result = await connection.execute(
-      `SELECT * FROM branches`
+      "SELECT COUNT(*) AS branch_count FROM branches"
     );
 
-    console.log(result.rows);
+    console.log(`Branches visible: ${result.rows[0].BRANCH_COUNT}`);
 
   } catch (err) {
 
-    console.error("❌ Connection Error:");
-    console.error(err);
+    console.error(`Connection failed: ${err.message}`);
 
   } finally {
 
@@ -30,7 +26,7 @@ async function testConnection() {
       await connection.close();
     }
 
-    process.exit(0);
+    process.exitCode = connection ? 0 : 1;
   }
 }
 
