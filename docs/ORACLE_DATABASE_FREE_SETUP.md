@@ -102,6 +102,8 @@ Connect as `BANK_APP` and run:
 
 This installs tables, constraints, indexes, functions, packages, procedures, views, triggers, and sample data.
 
+The sample data includes only fictional `DEPOSIT_SCHEMES` definitions. It does not create active deposits or financial postings. For a schema that already contains the prior phases, run `@database/migrations/003_deposit_profit_suite.sql` followed by `@database/tests/phase3_tests.sql`. The self-contained FreeSQL alternatives are `database/worksheet/full_upgrade.sql`, `full_fresh_install.sql`, and the read-only `verify_install.sql`; they contain no `@`/`@@` dependencies.
+
 `Optional evidence screenshot (if captured): SQLcl running database/run_all.sql`
 
 ## 9. Compile Procedures

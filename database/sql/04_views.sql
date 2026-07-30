@@ -37,3 +37,14 @@ SELECT t.transaction_id,t.account_id,t.reference_no,t.transaction_type,t.amount,
        CASE WHEN t.transaction_type IN ('DEPOSIT','TRANSFER_CREDIT','LOAN_DISBURSEMENT','REVERSAL_CREDIT') THEN t.amount ELSE 0 END credit,
        CASE WHEN t.transaction_type IN ('WITHDRAWAL','TRANSFER_DEBIT','LOAN_PAYMENT','REVERSAL_DEBIT') THEN t.amount ELSE 0 END debit
 FROM transactions t;
+
+CREATE OR REPLACE VIEW vw_deposit_certificate_reminders AS
+SELECT d.certificate_id,d.certificate_number,d.customer_id,d.account_id,d.maturity_date,
+       d.expected_maturity_amount,d.status,s.scheme_name,
+       CASE WHEN d.status='MATURED' OR d.maturity_date < TRUNC(SYSDATE) THEN 'ALREADY_MATURED'
+            WHEN d.maturity_date <= TRUNC(SYSDATE)+7 THEN 'WITHIN_7_DAYS'
+            WHEN EXTRACT(MONTH FROM d.maturity_date)=EXTRACT(MONTH FROM SYSDATE)
+             AND EXTRACT(YEAR FROM d.maturity_date)=EXTRACT(YEAR FROM SYSDATE) THEN 'THIS_MONTH'
+            ELSE 'FUTURE' END reminder_category
+FROM deposit_certificates d JOIN deposit_schemes s ON s.scheme_id=d.scheme_id
+WHERE d.status IN ('QUOTATION','ACTIVE','MATURED');

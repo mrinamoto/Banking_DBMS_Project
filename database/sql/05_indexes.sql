@@ -22,3 +22,7 @@ CREATE UNIQUE INDEX uk_beneficiary_active ON beneficiaries(
 );
 CREATE INDEX idx_kyc_customer_status ON customer_kyc(customer_id, status, updated_at DESC);
 CREATE INDEX idx_kyc_status_date ON customer_kyc(status, submitted_at DESC);
+CREATE INDEX idx_deposit_scheme_status ON deposit_schemes(status, scheme_type);
+CREATE INDEX idx_certificate_customer_status ON deposit_certificates(customer_id, status, maturity_date);
+CREATE INDEX idx_certificate_account ON deposit_certificates(account_id, status);
+CREATE INDEX idx_certificate_maturity ON deposit_certificates(maturity_date, status);

@@ -14,6 +14,7 @@ An academic, production-like Banking Management System built with React, Express
 - Role-specific dashboards for Admin, Manager, Employee, and Customer.
 - Package-controlled deposit/withdrawal reversal with an auditable compensating ledger row.
 - Ownership-scoped bank statements, saved beneficiaries, customer KYC workflow, and practical settings.
+- Educational deposit schemes with simple/monthly-compound profit, tax, maturity, DPS, printable quotations, reminders, and preview-only early withdrawal estimates.
 - Customer, employee, branch, account, loan, transaction, report, audit, and settings screens.
 - Open account, deposit, withdraw, transfer, freeze account, activate account, loan application, approval, rejection, and payment workflows.
 - Oracle audit logging through database triggers.
@@ -92,6 +93,8 @@ For an existing schema, run the non-destructive Phase 1 upgrade `@database/migra
 
 For Phase 2 on an existing schema, run `@database/migrations/002_reversal_statement_customer_tools.sql` (or paste `database/worksheet/phase2_upgrade.sql`), then `@database/tests/phase2_tests.sql`. Reversal is intentionally limited to successful `DEPOSIT` and `WITHDRAWAL` rows; transfers and loan payments are unsupported.
 
+For Phase 3 on an existing schema, run the non-destructive `@database/migrations/003_deposit_profit_suite.sql`, then the read-only `@database/tests/phase3_tests.sql`. The pasteable `database/worksheet/full_upgrade.sql` contains the Phase 1–3 upgrade without `@` dependencies. For an empty classroom schema use `database/worksheet/full_fresh_install.sql`; `full_reset_and_install.sql` is destructive and development-only. `database/worksheet/verify_install.sql` is read-only. Deposit quotations never activate a deposit, debit an account, or post a ledger transaction. The calculator is an educational estimate; tax and early-withdrawal values are not banking advice.
+
 ## Deployment
 
 - Deploy `client` to Vercel with `VITE_API_URL=https://your-render-service.onrender.com/api`.
@@ -150,6 +153,8 @@ erDiagram
 - `loans(loan_id, loan_number, customer_id, loan_type_id, requested_amount, status)`
 - `transactions(transaction_id, account_id, transaction_type, amount, reference_no, processed_by)`
 - `audit_log(audit_id, table_name, record_id, action_name, action_by, action_date)`
+- `deposit_schemes(scheme_id, scheme_code, scheme_type, annual_profit_rate, calculation_method, tax_percentage, status)`
+- `deposit_certificates(certificate_id, certificate_number, customer_id, scheme_id, expected_maturity_amount, maturity_date, status)`
 
 ## Normalization
 

@@ -42,6 +42,8 @@ ORDER BY name, sequence;
 
 Do not proceed to application testing until required tables and packages are valid. Run `@database/tests/acceptance_tests.sql` only in the dedicated schema and require `FAILED : 0` and `FINAL RESULT: PASS`.
 
+For an existing schema that already has Phase 1/2, run `@database/migrations/003_deposit_profit_suite.sql`, then `@database/tests/phase3_tests.sql`. If the worksheet editor does not resolve child paths, paste `database/worksheet/full_upgrade.sql` instead. For an empty schema, `database/worksheet/full_fresh_install.sql` is self-contained; `full_reset_and_install.sql` permanently drops objects and is for disposable development schemas only. Use `database/worksheet/verify_install.sql` for read-only verification.
+
 ## Verify and run
 
 ```powershell
@@ -65,6 +67,8 @@ npm run client:dev
 ```
 
 Open `http://localhost:5173/login` and check `http://localhost:5000/api/health`.
+
+After signing in, open `/deposits`. Calculator results are educational estimates. Saving a quotation writes status `QUOTATION` only; no account balance, active deposit, or ledger transaction is changed.
 
 ## Troubleshooting
 

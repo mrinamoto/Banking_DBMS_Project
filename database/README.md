@@ -29,7 +29,7 @@ sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
 9. `sql/03_insert_sample_data.sql` — fictional classroom data
 10. `USER_ERRORS` compiler report
 
-The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data.
+The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data. The fresh installer seeds only fictional deposit scheme definitions; it creates no active deposits, certificates, balances, or ledger postings.
 
 ## Phase 1 staff-login upgrade
 
@@ -66,6 +66,12 @@ ORDER BY name, sequence;
 Run the read-only Phase 1 checks with `@database/tests/phase1_tests.sql`. They verify lifecycle columns, the one-employee/one-login constraint, and the allowlisted explorer indexes; they do not create test data.
 
 After Phase 2 migration, run `@database/tests/phase2_tests.sql` for read-only object and constraint checks, then run the transactional acceptance suite. Reversal tests must run only in a disposable development schema because they create and roll back ledger test rows.
+
+## Phase 3 educational deposit tools
+
+Run `@database/migrations/003_deposit_profit_suite.sql` on an existing schema, then `@database/tests/phase3_tests.sql`. The upgrade adds `DEPOSIT_SCHEMES`, `DEPOSIT_CERTIFICATES`, indexes, fictional scheme seeds, and `VW_DEPOSIT_CERTIFICATE_REMINDERS` without changing accounts or transactions. The Express calculator implements simple interest, monthly compounding, tax, DPS annuity estimates, maturity dates, and an early-withdrawal preview. Saving a quotation stores status `QUOTATION` only; it never activates a deposit or changes a balance.
+
+FreeSQL worksheets are self-contained: `worksheet/full_upgrade.sql` (non-destructive existing-schema repair), `worksheet/full_fresh_install.sql` (empty schema), `worksheet/full_reset_and_install.sql` (destructive development reset), and `worksheet/verify_install.sql` (read-only verification). They deliberately contain no `@` or `@@` child-file dependencies.
 ```
 
 Oracle execution evidence is pending until these commands are run against the student's local schema.
