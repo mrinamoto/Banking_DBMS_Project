@@ -449,21 +449,100 @@ CREATE OR REPLACE PACKAGE BODY pkg_banking_operations AS
   PROCEDURE assert_amount(p_amount NUMBER) IS
   BEGIN IF p_amount IS NULL OR p_amount <= 0 THEN RAISE_APPLICATION_ERROR(-20010,'Amount must be greater than zero.'); END IF; END;
 
-  PROCEDURE open_account(p_customer_id NUMBER, p_branch_id NUMBER, p_account_type_id NUMBER, p_initial_deposit NUMBER, p_processed_by NUMBER, p_account_number OUT VARCHAR2) IS
-    v_min NUMBER(15,2); v_customer NUMBER; v_branch NUMBER; v_type NUMBER; v_account_id NUMBER;
+  PROCEDURE open_account(
+    p_customer_id NUMBER,
+    p_branch_id NUMBER,
+    p_account_type_id NUMBER,
+    p_initial_deposit NUMBER,
+    p_processed_by NUMBER,
+    p_account_number OUT VARCHAR2
+  ) IS
+    v_min NUMBER(15,2);
+    v_customer NUMBER;
+    v_branch NUMBER;
+    v_type NUMBER;
+    v_account_id NUMBER;
+    v_initial_reference VARCHAR2(50);
   BEGIN
-    SELECT COUNT(*) INTO v_customer FROM customers WHERE customer_id=p_customer_id AND status='ACTIVE';
-    SELECT COUNT(*) INTO v_branch FROM branches WHERE branch_id=p_branch_id AND status='ACTIVE';
-    SELECT COUNT(*), MAX(min_balance) INTO v_type,v_min FROM account_types WHERE account_type_id=p_account_type_id AND status='ACTIVE';
-    IF v_customer=0 THEN RAISE_APPLICATION_ERROR(-20011,'Active customer not found.'); END IF;
-    IF v_branch=0 THEN RAISE_APPLICATION_ERROR(-20012,'Active branch not found.'); END IF;
-    IF v_type=0 THEN RAISE_APPLICATION_ERROR(-20013,'Active account type not found.'); END IF;
-    IF NVL(p_initial_deposit,0) < v_min THEN RAISE_APPLICATION_ERROR(-20014,'Initial deposit is below the minimum balance.'); END IF;
+    SELECT COUNT(*)
+      INTO v_customer
+      FROM customers
+     WHERE customer_id = p_customer_id
+       AND status = 'ACTIVE';
+
+    SELECT COUNT(*)
+      INTO v_branch
+      FROM branches
+     WHERE branch_id = p_branch_id
+       AND status = 'ACTIVE';
+
+    SELECT COUNT(*), MAX(min_balance)
+      INTO v_type, v_min
+      FROM account_types
+     WHERE account_type_id = p_account_type_id
+       AND status = 'ACTIVE';
+
+    IF v_customer = 0 THEN
+      RAISE_APPLICATION_ERROR(-20011, 'Active customer not found.');
+    END IF;
+
+    IF v_branch = 0 THEN
+      RAISE_APPLICATION_ERROR(-20012, 'Active branch not found.');
+    END IF;
+
+    IF v_type = 0 THEN
+      RAISE_APPLICATION_ERROR(-20013, 'Active account type not found.');
+    END IF;
+
+    IF NVL(p_initial_deposit, 0) < v_min THEN
+      RAISE_APPLICATION_ERROR(
+        -20014,
+        'Initial deposit is below the minimum balance.'
+      );
+    END IF;
+
     p_account_number := fn_generate_account_number();
-    INSERT INTO accounts(account_number,customer_id,branch_id,account_type_id,balance) VALUES(p_account_number,p_customer_id,p_branch_id,p_account_type_id,NVL(p_initial_deposit,0)) RETURNING account_id INTO v_account_id;
-    IF NVL(p_initial_deposit,0)>0 THEN
-      INSERT INTO transactions(account_id,transaction_type,amount,previous_balance,new_balance,reference_no,description,processed_by)
-      VALUES(v_account_id, 'DEPOSIT', p_initial_deposit, 0, p_initial_deposit, reference('DEP'),'Initial deposit',p_processed_by);
+
+    INSERT INTO accounts(
+      account_number,
+      customer_id,
+      branch_id,
+      account_type_id,
+      balance
+    )
+    VALUES(
+      p_account_number,
+      p_customer_id,
+      p_branch_id,
+      p_account_type_id,
+      NVL(p_initial_deposit, 0)
+    )
+    RETURNING account_id INTO v_account_id;
+
+    IF NVL(p_initial_deposit, 0) > 0 THEN
+      -- Generate the reference in PL/SQL before using it in SQL.
+      v_initial_reference := reference('DEP');
+
+      INSERT INTO transactions(
+        account_id,
+        transaction_type,
+        amount,
+        previous_balance,
+        new_balance,
+        reference_no,
+        description,
+        processed_by
+      )
+      VALUES(
+        v_account_id,
+        'DEPOSIT',
+        p_initial_deposit,
+        0,
+        p_initial_deposit,
+        v_initial_reference,
+        'Initial deposit',
+        p_processed_by
+      );
     END IF;
   END;
 
