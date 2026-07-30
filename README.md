@@ -68,6 +68,7 @@ Test configuration and start the two processes in separate PowerShell windows:
 
 ```powershell
 npm run db:test
+npm run db:doctor
 npm run server:start
 npm run client:dev
 ```

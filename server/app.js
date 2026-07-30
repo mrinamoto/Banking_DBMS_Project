@@ -24,7 +24,7 @@ function createApp() {
       await connection.execute("SELECT 1 AS ok FROM dual");
       res.json({ status: "ok", database: "connected" });
     } catch (error) {
-      console.error(`Database health check failed: ${error.message}`);
+      console.error("Database health check failed.");
       res.status(503).json({ status: "unavailable", database: "disconnected" });
     } finally {
       if (connection) await connection.close();

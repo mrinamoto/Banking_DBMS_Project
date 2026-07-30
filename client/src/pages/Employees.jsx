@@ -15,8 +15,11 @@ export default function Employees() {
 
   async function load() {
     try {
-      const [employees, lookups] = await Promise.all([api.get("/employees"), api.get("/lookups")]);
-      setRows(employees.data);setBranches(lookups.data.branches);setError("");
+      const [employees, lookups] = await Promise.allSettled([api.get("/employees"), api.get("/lookups")]);
+      const errors = [];
+      if (employees.status === "fulfilled") setRows(employees.value.data); else errors.push(messageFrom(employees.reason));
+      if (lookups.status === "fulfilled") setBranches(lookups.value.data.branches || []); else errors.push(messageFrom(lookups.reason));
+      setError(errors.join(" "));
     } catch (requestError) { setError(messageFrom(requestError)); }
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -49,6 +49,7 @@ BEGIN
 
   -- Triggers are normally dropped with tables; explicit calls make intent clear.
   drop_if_present('TRIGGER', 'TRG_PROTECT_FINANCIAL_HISTORY');
+  drop_if_present('TRIGGER', 'TRG_VALIDATE_USER_STAFF_CODE');
   drop_if_present('TRIGGER', 'TRG_AUDIT_LOAN_STATUS');
   drop_if_present('TRIGGER', 'TRG_AUDIT_ACCOUNT_STATUS');
   drop_if_present('TRIGGER', 'TRG_AUDIT_CUSTOMER_UPDATE');

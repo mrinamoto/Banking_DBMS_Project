@@ -9,6 +9,7 @@
     "check": "node scripts/check-all-js.js",
     "test": "node --test",
     "db:test": "node testConnection.js",
+    "db:doctor": "node scripts/db-doctor.js",
     "demo-hash": "node scripts/generate-demo-hash.js",
     "seed:demo-users": "node scripts/create-demo-users.js",
     "seed:viva-users": "node scripts/seed-viva-users.js"

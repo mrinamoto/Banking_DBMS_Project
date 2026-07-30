@@ -1,4 +1,5 @@
--- Browser FreeSQL worksheet for upgrading an existing Phase 1-3 schema.
+-- Browser FreeSQL worksheet for a non-destructive upgrade of an existing Phase 1-3 schema.
+-- It preserves customers, accounts, transactions and balances.
 
 -- ===== database/worksheet/phase1_upgrade.sql =====
 -- FreeSQL/SQL*Plus pasteable Phase 1 upgrade. Non-destructive; no passwords.
@@ -112,13 +113,17 @@ DECLARE
     IF SQLCODE NOT IN (-955, -1430, -2260, -2275, -1408) THEN RAISE; END IF;
   END;
 BEGIN
-  ignore_expected('ALTER TABLE loan_types ADD (short_description VARCHAR2(200), detailed_description VARCHAR2(1000), minimum_annual_income NUMBER(15,2), processing_fee_percentage NUMBER(5,2) DEFAULT 0 NOT NULL, eligibility_summary VARCHAR2(500), required_document_summary VARCHAR2(500), interest_method VARCHAR2(20) DEFAULT ''REDUCING_BALANCE'' NOT NULL)');
+  ignore_expected('ALTER TABLE loan_types ADD (short_description VARCHAR2(200))');
+  ignore_expected('ALTER TABLE loan_types ADD (detailed_description VARCHAR2(1000))');
+  ignore_expected('ALTER TABLE loan_types ADD (minimum_annual_income NUMBER(15,2))');
+  ignore_expected('ALTER TABLE loan_types ADD (processing_fee_percentage NUMBER(5,2) DEFAULT 0 NOT NULL)');
+  ignore_expected('ALTER TABLE loan_types ADD (eligibility_summary VARCHAR2(500))');
+  ignore_expected('ALTER TABLE loan_types ADD (required_document_summary VARCHAR2(500))');
+  ignore_expected('ALTER TABLE loan_types ADD (interest_method VARCHAR2(20) DEFAULT ''REDUCING_BALANCE'' NOT NULL)');
   ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_income CHECK (minimum_annual_income IS NULL OR minimum_annual_income >= 0)');
   ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_fee CHECK (processing_fee_percentage BETWEEN 0 AND 100)');
   ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_method CHECK (interest_method IN (''REDUCING_BALANCE'',''FLAT_RATE''))');
   ignore_expected('ALTER TABLE users ADD (staff_code VARCHAR2(20))');
-  UPDATE employees SET employee_code='M-ID-001' WHERE employee_code='EMP-001' AND NOT EXISTS (SELECT 1 FROM employees WHERE employee_code='M-ID-001');
-  UPDATE employees SET employee_code='E-ID-001' WHERE employee_code='EMP-002' AND NOT EXISTS (SELECT 1 FROM employees WHERE employee_code='E-ID-001');
   UPDATE users u
        WHEN u.role='ADMIN' THEN 'A-ID-'||LPAD(u.user_id,3,'0')
        ELSE (SELECT e.employee_code FROM employees e WHERE e.employee_id=u.employee_id)
@@ -131,6 +136,25 @@ BEGIN
   ignore_expected('CREATE INDEX idx_users_staff_code_lower ON users(LOWER(staff_code))');
   COMMIT;
   DBMS_OUTPUT.PUT_LINE('Final Viva Hardening staff identity upgrade complete.');
+END;
+/
+CREATE OR REPLACE TRIGGER trg_validate_user_staff_code
+BEFORE INSERT OR UPDATE OF employee_id, staff_code, role ON users
+FOR EACH ROW
+DECLARE
+  v_employee_code employees.employee_code%TYPE;
+BEGIN
+  IF :NEW.role IN ('MANAGER', 'EMPLOYEE') THEN
+    SELECT employee_code INTO v_employee_code FROM employees WHERE employee_id = :NEW.employee_id;
+    IF UPPER(TRIM(:NEW.staff_code)) <> UPPER(TRIM(v_employee_code)) THEN
+      RAISE_APPLICATION_ERROR(-20310, 'Staff code must match the linked employee code.');
+    END IF;
+  ELSIF :NEW.role = 'CUSTOMER' AND :NEW.staff_code IS NOT NULL THEN
+    RAISE_APPLICATION_ERROR(-20311, 'Customer users cannot have a staff code.');
+  END IF;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    RAISE_APPLICATION_ERROR(-20312, 'Staff users must link to an existing employee.');
 END;
 /
 SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
@@ -527,5 +551,25 @@ CREATE OR REPLACE TRIGGER trg_protect_financial_history
 BEFORE UPDATE OR DELETE ON transactions
 BEGIN
   RAISE_APPLICATION_ERROR(-20200,'Financial transaction history cannot be updated or deleted. Use a controlled reversal entry.');
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_validate_user_staff_code
+BEFORE INSERT OR UPDATE OF employee_id, staff_code, role ON users
+FOR EACH ROW
+DECLARE
+  v_employee_code employees.employee_code%TYPE;
+BEGIN
+  IF :NEW.role IN ('MANAGER', 'EMPLOYEE') THEN
+    SELECT employee_code INTO v_employee_code FROM employees WHERE employee_id = :NEW.employee_id;
+    IF UPPER(TRIM(:NEW.staff_code)) <> UPPER(TRIM(v_employee_code)) THEN
+      RAISE_APPLICATION_ERROR(-20310, 'Staff code must match the linked employee code.');
+    END IF;
+  ELSIF :NEW.role = 'CUSTOMER' AND :NEW.staff_code IS NOT NULL THEN
+    RAISE_APPLICATION_ERROR(-20311, 'Customer users cannot have a staff code.');
+  END IF;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    RAISE_APPLICATION_ERROR(-20312, 'Staff users must link to an existing employee.');
 END;
 /

@@ -1,4 +1,5 @@
 -- Browser FreeSQL worksheet for an empty BANK_APP development schema.
+-- Review this script before running; it does not drop objects.
 
 -- ===== database/sql/01_create_tables.sql =====
 -- Smart Banking Management System: Oracle 19c+ core schema
@@ -747,6 +748,26 @@ CREATE OR REPLACE TRIGGER trg_protect_financial_history
 BEFORE UPDATE OR DELETE ON transactions
 BEGIN
   RAISE_APPLICATION_ERROR(-20200,'Financial transaction history cannot be updated or deleted. Use a controlled reversal entry.');
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_validate_user_staff_code
+BEFORE INSERT OR UPDATE OF employee_id, staff_code, role ON users
+FOR EACH ROW
+DECLARE
+  v_employee_code employees.employee_code%TYPE;
+BEGIN
+  IF :NEW.role IN ('MANAGER', 'EMPLOYEE') THEN
+    SELECT employee_code INTO v_employee_code FROM employees WHERE employee_id = :NEW.employee_id;
+    IF UPPER(TRIM(:NEW.staff_code)) <> UPPER(TRIM(v_employee_code)) THEN
+      RAISE_APPLICATION_ERROR(-20310, 'Staff code must match the linked employee code.');
+    END IF;
+  ELSIF :NEW.role = 'CUSTOMER' AND :NEW.staff_code IS NOT NULL THEN
+    RAISE_APPLICATION_ERROR(-20311, 'Customer users cannot have a staff code.');
+  END IF;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    RAISE_APPLICATION_ERROR(-20312, 'Staff users must link to an existing employee.');
 END;
 /
 

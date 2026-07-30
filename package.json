@@ -6,6 +6,7 @@
     "client:test": "node --test client/test/depositSuiteState.test.js",
     "server:start": "npm --prefix server start",
     "db:test": "npm --prefix server run db:test",
+    "db:doctor": "npm --prefix server run db:doctor",
     "server:check": "npm --prefix server run check",
     "server:test": "npm --prefix server test"
   },
