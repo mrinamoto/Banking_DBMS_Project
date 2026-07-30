@@ -1,5 +1,4 @@
--- FreeSQL/SQL*Plus pasteable Phase 1 upgrade. Non-destructive; no passwords.
-SET SERVEROUTPUT ON
+﻿-- FreeSQL/SQL*Plus pasteable Phase 1 upgrade. Non-destructive; no passwords.
 DECLARE
   PROCEDURE add_column(p_sql VARCHAR2) IS BEGIN EXECUTE IMMEDIATE p_sql; EXCEPTION WHEN OTHERS THEN IF SQLCODE NOT IN (-1430,-2260) THEN RAISE; END IF; END;
   PROCEDURE add_index(p_sql VARCHAR2) IS BEGIN EXECUTE IMMEDIATE p_sql; EXCEPTION WHEN OTHERS THEN IF SQLCODE NOT IN (-955,-1408) THEN RAISE; END IF; END;

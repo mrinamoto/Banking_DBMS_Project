@@ -1,11 +1,8 @@
-﻿-- Pasteable non-destructive Phase 1-3 upgrade for an existing BANK_APP schema.
-SET SERVEROUTPUT ON
-SET DEFINE OFF
+﻿-- Browser FreeSQL non-destructive Phase 1-3 upgrade for an existing BANK_APP schema.
 
 -- ===== database/worksheet/phase1_upgrade.sql =====
 
 -- FreeSQL/SQL*Plus pasteable Phase 1 upgrade. Non-destructive; no passwords.
-SET SERVEROUTPUT ON
 DECLARE
   PROCEDURE add_column(p_sql VARCHAR2) IS BEGIN EXECUTE IMMEDIATE p_sql; EXCEPTION WHEN OTHERS THEN IF SQLCODE NOT IN (-1430,-2260) THEN RAISE; END IF; END;
   PROCEDURE add_index(p_sql VARCHAR2) IS BEGIN EXECUTE IMMEDIATE p_sql; EXCEPTION WHEN OTHERS THEN IF SQLCODE NOT IN (-955,-1408) THEN RAISE; END IF; END;
@@ -33,7 +30,6 @@ SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 -- Non-destructive Phase 2 upgrade. Run as the BANK_APP schema owner.
 -- It preserves existing ledger rows and adds only compensating-ledger metadata,
 -- customer tools, and supporting indexes.
-SET SERVEROUTPUT ON
 DECLARE
   PROCEDURE exec_ignore(p_sql VARCHAR2, p_codes SYS.ODCINUMBERLIST) IS
     v_ignored BOOLEAN := FALSE;
@@ -67,7 +63,6 @@ SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 
 -- Non-destructive Phase 3 upgrade. Run as the BANK_APP schema owner.
 -- This adds educational schemes/quotations only; it never posts money or changes balances.
-SET SERVEROUTPUT ON
 DECLARE
   PROCEDURE exec_ignore(p_sql VARCHAR2) IS
   BEGIN
@@ -82,6 +77,23 @@ BEGIN
   exec_ignore('CREATE INDEX idx_certificate_customer_status ON deposit_certificates(customer_id,status,maturity_date)');
   exec_ignore('CREATE INDEX idx_certificate_account ON deposit_certificates(account_id,status)');
   exec_ignore('CREATE INDEX idx_certificate_maturity ON deposit_certificates(maturity_date,status)');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_type CHECK (scheme_type IN (''FIXED_DEPOSIT'',''MONTHLY_PROFIT'',''DPS'',''SAVINGS_PROFIT'',''SENIOR_CITIZEN'',''STUDENT_SAVINGS''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_rate CHECK (annual_profit_rate BETWEEN 0 AND 100)');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_method CHECK (calculation_method IN (''SIMPLE'',''MONTHLY_COMPOUND''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_frequency CHECK (payment_frequency IN (''AT_MATURITY'',''MONTHLY'',''RECURRING''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_tax CHECK (tax_percentage BETWEEN 0 AND 100)');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_senior CHECK (senior_only IN (''Y'',''N''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_student CHECK (student_only IN (''Y'',''N''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_status CHECK (status IN (''ACTIVE'',''INACTIVE''))');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_months CHECK (minimum_months > 0 AND maximum_months >= minimum_months)');
+  exec_ignore('ALTER TABLE deposit_schemes ADD CONSTRAINT ck_deposit_scheme_max CHECK (maximum_amount IS NULL OR maximum_amount >= minimum_amount)');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_principal CHECK (principal_amount > 0)');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_rate CHECK (annual_profit_rate BETWEEN 0 AND 100)');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_duration CHECK (duration_months > 0)');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_method CHECK (calculation_method IN (''SIMPLE'',''MONTHLY_COMPOUND''))');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_tax CHECK (tax_percentage BETWEEN 0 AND 100)');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_status CHECK (status IN (''QUOTATION'',''ACTIVE'',''MATURED'',''CLOSED'',''PREMATURELY_CLOSED'',''BLOCKED''))');
+  exec_ignore('ALTER TABLE deposit_certificates ADD CONSTRAINT ck_certificate_dates CHECK (maturity_date >= opening_date)');
   INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) SELECT 'FD-SIMPLE','Classroom Fixed Deposit','FIXED_DEPOSIT',10000,5000000,3,36,8,'SIMPLE','AT_MATURITY',10,3 FROM dual WHERE NOT EXISTS (SELECT 1 FROM deposit_schemes WHERE scheme_code='FD-SIMPLE');
   INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) SELECT 'FD-COMPOUND','Monthly Compound Deposit','MONTHLY_PROFIT',10000,5000000,6,36,8.5,'MONTHLY_COMPOUND','AT_MATURITY',10,3 FROM dual WHERE NOT EXISTS (SELECT 1 FROM deposit_schemes WHERE scheme_code='FD-COMPOUND');
   INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) SELECT 'DPS-EDU','Educational DPS','DPS',500,100000,12,36,7.25,'MONTHLY_COMPOUND','RECURRING',5,2 FROM dual WHERE NOT EXISTS (SELECT 1 FROM deposit_schemes WHERE scheme_code='DPS-EDU');

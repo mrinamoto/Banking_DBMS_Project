@@ -1,5 +1,4 @@
--- Read-only FreeSQL verification for the final Phase 3 schema.
-SET PAGESIZE 100
+﻿-- Read-only FreeSQL verification for the final Phase 3 schema.
 SELECT table_name FROM user_tables WHERE table_name IN ('USERS','CUSTOMERS','BRANCHES','ACCOUNTS','LOANS','TRANSACTIONS','AUDIT_LOG','DEPOSIT_SCHEMES','DEPOSIT_CERTIFICATES','BENEFICIARIES','CUSTOMER_KYC') ORDER BY table_name;
 SELECT object_name,object_type,status FROM user_objects WHERE object_name IN ('PKG_BANKING_OPERATIONS','PKG_LOAN_OPERATIONS','VW_ACCOUNT_STATEMENT','VW_DEPOSIT_CERTIFICATE_REMINDERS') ORDER BY object_type,object_name;
 SELECT object_type,status,COUNT(*) object_count FROM user_objects GROUP BY object_type,status ORDER BY object_type,status;

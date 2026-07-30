@@ -1,12 +1,10 @@
-﻿-- DEVELOPMENT ONLY: this permanently drops the current schema objects.
+﻿-- DEVELOPMENT ONLY: this permanently drops current schema objects.
 -- Confirm the schema is disposable before pasting this worksheet.
-SET SERVEROUTPUT ON
 -- ============================================================================
 -- DEVELOPMENT CLEANUP ONLY.
 -- NEVER RUN AGAINST A SCHEMA CONTAINING IMPORTANT DATA.
 -- This file is intentionally excluded from database/run_all.sql.
 -- ============================================================================
-SET SERVEROUTPUT ON
 
 DECLARE
   PROCEDURE drop_if_present(
@@ -78,9 +76,7 @@ BEGIN
   drop_if_present('SEQUENCE', 'SEQ_BUSINESS_REFERENCE');
 END;
 /
--- Pasteable fresh installer for an empty BANK_APP development schema.
-WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
-SET DEFINE OFF
+-- Browser FreeSQL worksheet for an empty BANK_APP development schema.
 
 -- ===== database/sql/01_create_tables.sql =====
 
@@ -782,5 +778,5 @@ END;
 /
 COMMIT;
 
-PROMPT Smart Banking fresh schema installed. Review USER_ERRORS.
+-- Review compiler errors after the worksheet completes.
 SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
