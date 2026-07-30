@@ -14,20 +14,19 @@ export default function Loans() {
   const [receipt, setReceipt] = useState(null);
   const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [application, setApplication] = useState({ customerId: user.customerId || "", loanTypeId: "", accountId: "", amount: "", termMonths: "" });
   const [decision, setDecision] = useState({ approvedAmount: "", reason: "" });
   const [payment, setPayment] = useState({ accountNumber: "", amount: "" });
 
   async function load() {
     try {
-      const [loanResult, lookupResult, accountResult] = await Promise.all([
-        api.get("/loans"), api.get("/lookups"), api.get("/accounts", { params: { pageSize: 100 } }),
-      ]);
-      setRows(loanResult.data);
-      setLookups(lookupResult.data);
-      setAccounts(accountResult.data.items);
-      setError("");
+      const results = await Promise.allSettled([api.get("/loans"), api.get("/lookups"), api.get("/accounts", { params: { pageSize: 100 } })]);
+      if (results[0].status === "fulfilled") setRows(results[0].value.data); else setError(messageFrom(results[0].reason));
+      if (results[1].status === "fulfilled") setLookups(results[1].value.data); else setError(messageFrom(results[1].reason));
+      if (results[2].status === "fulfilled") setAccounts(results[2].value.data.items || []); else setError(messageFrom(results[2].reason));
     } catch (requestError) { setError(messageFrom(requestError)); }
+    finally { setInitialLoading(false); }
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -75,10 +74,11 @@ export default function Loans() {
     catch (requestError) { setError(messageFrom(requestError)); }
   }
 
-  if (!rows && !error) return <Loading />;
+  if (initialLoading) return <Loading />;
   return <>
     <PageHeader title="Loans" subtitle="Oracle validates limits, EMI, disbursement, ownership, and repayment" action={<button className="btn-primary" onClick={() => setDialog("apply")}>Apply for loan</button>} />
     <ErrorBox message={error} />
+    {lookups?.loanTypes?.length > 0 && <section className="mb-5 grid gap-4 md:grid-cols-2"><h2 className="sr-only">Loan product catalogue</h2>{lookups.loanTypes.map((product) => <article className="card" key={product.ID}><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold">{product.LABEL}</h2><p className="mt-1 text-sm text-slate-600">{product.SHORT_DESCRIPTION || "Educational lending product"}</p></div><Status value="ACTIVE" /></div><p className="mt-3 text-sm">{product.DETAILED_DESCRIPTION || "Final approval, pricing and eligibility are determined by Oracle-backed review."}</p><dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600"><div><dt>Amount</dt><dd className="font-semibold">{money(product.MIN_AMOUNT)}–{money(product.MAX_AMOUNT)}</dd></div><div><dt>Rate</dt><dd className="font-semibold">{product.ANNUAL_INTEREST_RATE}% · {product.INTEREST_METHOD || "REDUCING_BALANCE"}</dd></div><div><dt>Term</dt><dd className="font-semibold">{product.MIN_TERM_MONTHS}–{product.MAX_TERM_MONTHS} months</dd></div><div><dt>Processing fee</dt><dd className="font-semibold">{product.PROCESSING_FEE_PERCENTAGE || 0}%</dd></div></dl><p className="mt-3 text-xs text-slate-500">{product.ELIGIBILITY_SUMMARY || "Eligibility is checked by the server."}</p></article>)}</section>}
     <Receipt data={receipt} title="Loan transaction receipt" />
     {!rows?.length ? <Empty /> : <div className="table-wrap"><table className="data-table"><thead><tr><th>Loan</th><th>Customer</th><th>Type</th><th>Requested</th><th>EMI</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rows.map((loan) => <tr key={loan.LOAN_ID}><td className="font-mono">{loan.LOAN_NUMBER}</td><td>{loan.CUSTOMER_NAME}</td><td>{loan.TYPE_NAME}</td><td>{money(loan.REQUESTED_AMOUNT)}</td><td>{money(loan.MONTHLY_INSTALLMENT)}</td><td>{money(loan.OUTSTANDING_BALANCE)}</td><td><Status value={loan.STATUS} /></td><td><div className="flex gap-2">{loan.STATUS === "PENDING" && ["ADMIN", "MANAGER"].includes(user.role) && <><button className="text-emerald-700" onClick={() => { setSelectedLoan(loan);setDecision({ approvedAmount: loan.REQUESTED_AMOUNT, reason: "" });setDialog("approve"); }}>Approve</button><button className="text-red-700" onClick={() => { setSelectedLoan(loan);setDialog("reject"); }}>Reject</button></>}{loan.STATUS === "ACTIVE" && <button className="text-emerald-700" onClick={() => { setSelectedLoan(loan);setPayment({ accountNumber: "", amount: "" });setDialog("pay"); }}>Pay loan</button>}<button className="text-blue-700" onClick={() => showHistory(loan)}>History</button></div></td></tr>)}</tbody></table></div>}
 

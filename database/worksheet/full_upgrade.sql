@@ -1,7 +1,6 @@
-﻿-- Browser FreeSQL non-destructive Phase 1-3 upgrade for an existing BANK_APP schema.
+-- Browser FreeSQL worksheet for upgrading an existing Phase 1-3 schema.
 
 -- ===== database/worksheet/phase1_upgrade.sql =====
-
 -- FreeSQL/SQL*Plus pasteable Phase 1 upgrade. Non-destructive; no passwords.
 DECLARE
   PROCEDURE add_column(p_sql VARCHAR2) IS BEGIN EXECUTE IMMEDIATE p_sql; EXCEPTION WHEN OTHERS THEN IF SQLCODE NOT IN (-1430,-2260) THEN RAISE; END IF; END;
@@ -25,8 +24,8 @@ END;
 /
 SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 
--- ===== database/migrations/002_reversal_statement_customer_tools.sql =====
-
+-- ===== database/worksheet/phase2_upgrade.sql =====
+-- Browser FreeSQL non-destructive Phase 2 upgrade.
 -- Non-destructive Phase 2 upgrade. Run as the BANK_APP schema owner.
 -- It preserves existing ledger rows and adds only compensating-ledger metadata,
 -- customer tools, and supporting indexes.
@@ -60,7 +59,6 @@ SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 -- Recompile the maintained package/view sources after the DDL upgrade:
 
 -- ===== database/migrations/003_deposit_profit_suite.sql =====
-
 -- Non-destructive Phase 3 upgrade. Run as the BANK_APP schema owner.
 -- This adds educational schemes/quotations only; it never posts money or changes balances.
 DECLARE
@@ -103,8 +101,41 @@ END;
 /
 SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 
--- ===== maintained package and views =====
+-- ===== database/migrations/004_final_viva_hardening.sql =====
+-- Non-destructive Final Viva Hardening upgrade.
+-- Adds stable staff IDs and case-insensitive lookup without changing passwords or ledger rows.
+DECLARE
+  PROCEDURE ignore_expected(p_sql VARCHAR2) IS
+  BEGIN
+    EXECUTE IMMEDIATE p_sql;
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLCODE NOT IN (-955, -1430, -2260, -2275, -1408) THEN RAISE; END IF;
+  END;
+BEGIN
+  ignore_expected('ALTER TABLE loan_types ADD (short_description VARCHAR2(200), detailed_description VARCHAR2(1000), minimum_annual_income NUMBER(15,2), processing_fee_percentage NUMBER(5,2) DEFAULT 0 NOT NULL, eligibility_summary VARCHAR2(500), required_document_summary VARCHAR2(500), interest_method VARCHAR2(20) DEFAULT ''REDUCING_BALANCE'' NOT NULL)');
+  ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_income CHECK (minimum_annual_income IS NULL OR minimum_annual_income >= 0)');
+  ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_fee CHECK (processing_fee_percentage BETWEEN 0 AND 100)');
+  ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_method CHECK (interest_method IN (''REDUCING_BALANCE'',''FLAT_RATE''))');
+  ignore_expected('ALTER TABLE users ADD (staff_code VARCHAR2(20))');
+  UPDATE employees SET employee_code='M-ID-001' WHERE employee_code='EMP-001' AND NOT EXISTS (SELECT 1 FROM employees WHERE employee_code='M-ID-001');
+  UPDATE employees SET employee_code='E-ID-001' WHERE employee_code='EMP-002' AND NOT EXISTS (SELECT 1 FROM employees WHERE employee_code='E-ID-001');
+  UPDATE users u
+       WHEN u.role='ADMIN' THEN 'A-ID-'||LPAD(u.user_id,3,'0')
+       ELSE (SELECT e.employee_code FROM employees e WHERE e.employee_id=u.employee_id)
+     END
+   WHERE u.staff_code IS NULL AND u.role <> 'CUSTOMER';
+  ignore_expected('ALTER TABLE users DROP CONSTRAINT ck_user_principal');
+  ignore_expected('ALTER TABLE users ADD CONSTRAINT ck_user_principal CHECK ((role = ''CUSTOMER'' AND customer_id IS NOT NULL AND employee_id IS NULL AND staff_code IS NULL) OR (role IN (''MANAGER'',''EMPLOYEE'') AND employee_id IS NOT NULL AND customer_id IS NULL AND staff_code IS NOT NULL) OR (role = ''ADMIN'' AND customer_id IS NULL AND employee_id IS NULL AND staff_code IS NOT NULL))');
+  ignore_expected('ALTER TABLE users ADD CONSTRAINT uk_users_staff_code UNIQUE(staff_code)');
+  ignore_expected('CREATE UNIQUE INDEX uk_users_staff_code_lower ON users(LOWER(staff_code))');
+  ignore_expected('CREATE INDEX idx_users_staff_code_lower ON users(LOWER(staff_code))');
+  COMMIT;
+  DBMS_OUTPUT.PUT_LINE('Final Viva Hardening staff identity upgrade complete.');
+END;
+/
+SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 
+-- ===== database/sql/11_packages.sql =====
 CREATE OR REPLACE PACKAGE pkg_banking_operations AS
   PROCEDURE open_account(p_customer_id NUMBER, p_branch_id NUMBER, p_account_type_id NUMBER, p_initial_deposit NUMBER, p_processed_by NUMBER, p_account_number OUT VARCHAR2);
   PROCEDURE deposit(p_account_number VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_reference OUT VARCHAR2);
@@ -384,6 +415,20 @@ CREATE OR REPLACE PACKAGE BODY pkg_loan_operations AS
   FUNCTION remaining_installments(p_loan_id NUMBER) RETURN NUMBER IS v_out NUMBER;v_emi NUMBER; BEGIN SELECT outstanding_balance,monthly_installment INTO v_out,v_emi FROM loans WHERE loan_id=p_loan_id; RETURN CASE WHEN v_out=0 THEN 0 ELSE CEIL(v_out/v_emi) END; EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20114,'Loan not found.'); END;
 END pkg_loan_operations;
 /
+
+-- ===== database/sql/08_procedures.sql =====
+-- Compatibility wrappers for classroom demonstrations. New application code calls packages.
+CREATE OR REPLACE PROCEDURE pr_deposit(p_account_number VARCHAR2,p_amount NUMBER,p_processed_by NUMBER,p_reference OUT VARCHAR2) AS
+BEGIN pkg_banking_operations.deposit(p_account_number,p_amount,p_processed_by,p_reference); END;
+/
+CREATE OR REPLACE PROCEDURE pr_withdraw(p_account_number VARCHAR2,p_amount NUMBER,p_processed_by NUMBER,p_reference OUT VARCHAR2) AS
+BEGIN pkg_banking_operations.withdraw(p_account_number,p_amount,p_processed_by,p_reference); END;
+/
+CREATE OR REPLACE PROCEDURE pr_transfer(p_from_account VARCHAR2,p_to_account VARCHAR2,p_amount NUMBER,p_processed_by NUMBER,p_owner_customer_id NUMBER,p_reference OUT VARCHAR2) AS
+BEGIN pkg_banking_operations.transfer_funds(p_from_account,p_to_account,p_amount,p_processed_by,p_owner_customer_id,p_reference); END;
+/
+
+-- ===== database/sql/04_views.sql =====
 CREATE OR REPLACE VIEW vw_customer_account_summary AS
 SELECT c.customer_id,c.first_name||' '||c.last_name customer_name,a.account_id,a.account_number,
        t.type_name,b.branch_name,a.balance,a.currency,a.status,a.open_date
@@ -435,4 +480,52 @@ SELECT d.certificate_id,d.certificate_number,d.customer_id,d.account_id,d.maturi
 FROM deposit_certificates d JOIN deposit_schemes s ON s.scheme_id=d.scheme_id
 WHERE d.status IN ('QUOTATION','ACTIVE','MATURED');
 
-SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
+-- ===== database/sql/10_triggers.sql =====
+CREATE OR REPLACE FUNCTION fn_audit_actor RETURN VARCHAR2 IS
+BEGIN
+  RETURN COALESCE(
+    SYS_CONTEXT('USERENV', 'CLIENT_IDENTIFIER'),
+    SYS_CONTEXT('USERENV', 'SESSION_USER')
+  );
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_audit_customer_update
+AFTER UPDATE ON customers
+FOR EACH ROW
+BEGIN
+  INSERT INTO audit_log(table_name,record_id,action_name,action_by,old_summary,new_summary)
+  VALUES(
+    'CUSTOMERS', :NEW.customer_id, 'UPDATE', fn_audit_actor(),
+    'status='||:OLD.status||';phone='||:OLD.phone,
+    'status='||:NEW.status||';phone='||:NEW.phone
+  );
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_audit_account_status
+AFTER UPDATE OF status ON accounts
+FOR EACH ROW
+WHEN (OLD.status <> NEW.status)
+BEGIN
+  INSERT INTO audit_log(table_name,record_id,action_name,action_by,old_summary,new_summary)
+  VALUES('ACCOUNTS',:NEW.account_id,'STATUS_CHANGE',fn_audit_actor(),'status='||:OLD.status,'status='||:NEW.status);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_audit_loan_status
+AFTER UPDATE OF status ON loans
+FOR EACH ROW
+WHEN (OLD.status <> NEW.status)
+BEGIN
+  INSERT INTO audit_log(table_name,record_id,action_name,action_by,old_summary,new_summary)
+  VALUES('LOANS',:NEW.loan_id,'STATUS_CHANGE',fn_audit_actor(),'status='||:OLD.status,'status='||:NEW.status);
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_protect_financial_history
+BEFORE UPDATE OR DELETE ON transactions
+BEGIN
+  RAISE_APPLICATION_ERROR(-20200,'Financial transaction history cannot be updated or deleted. Use a controlled reversal entry.');
+END;
+/

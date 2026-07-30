@@ -6,3 +6,6 @@ SELECT name,type,line,position,text FROM user_errors ORDER BY name,sequence;
 SELECT scheme_code,scheme_type,annual_profit_rate,calculation_method,status FROM deposit_schemes ORDER BY scheme_code;
 SELECT status,COUNT(*) certificate_count FROM deposit_certificates GROUP BY status ORDER BY status;
 SELECT index_name FROM user_indexes WHERE index_name IN ('IDX_DEPOSIT_SCHEME_STATUS','IDX_CERTIFICATE_CUSTOMER_STATUS','IDX_CERTIFICATE_ACCOUNT','IDX_CERTIFICATE_MATURITY') ORDER BY index_name;
+SELECT employee_code,first_name||' '||last_name employee_name,status FROM employees WHERE employee_code IN ('M-ID-001','E-ID-001') ORDER BY employee_code;
+SELECT username,staff_code,role,is_active FROM users WHERE staff_code IN ('A-ID-001','M-ID-001','E-ID-001') ORDER BY staff_code;
+SELECT type_name,short_description,interest_method,status FROM loan_types ORDER BY loan_type_id;

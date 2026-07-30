@@ -89,7 +89,7 @@ FROM user_errors
 ORDER BY name, sequence;
 ```
 
-For an existing schema, run the non-destructive Phase 1 upgrade `@database/migrations/001_staff_users_explorer_dashboard.sql` (or paste `database/worksheet/phase1_upgrade.sql`), then run the read-only checks with `@database/tests/phase1_tests.sql`. Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Create temporary role users with `npm --prefix server run seed:demo-users -- <temporary-password>` and remove them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
+For an existing schema, run the non-destructive Phase 1 upgrade `@database/migrations/001_staff_users_explorer_dashboard.sql` (or paste `database/worksheet/phase1_upgrade.sql`), then run the read-only checks with `@database/tests/phase1_tests.sql`. Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Seed university demonstration identities with `npm --prefix server run seed:viva-users -- --base-secret "<local-secret-at-least-16-chars>"` (add `--include-customer` for the optional customer). Temporary passwords are printed only to the invoking terminal and require first-login change. Remove or deactivate them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
 
 For Phase 2 on an existing schema, run `@database/migrations/002_reversal_statement_customer_tools.sql` (or paste `database/worksheet/phase2_upgrade.sql`), then `@database/tests/phase2_tests.sql`. Reversal is intentionally limited to successful `DEPOSIT` and `WITHDRAWAL` rows; transfers and loan payments are unsupported.
 
@@ -143,7 +143,7 @@ erDiagram
 - `branches(branch_id, branch_code, branch_name, city, address, phone, swift_code, status, created_at)`
 - `customers(customer_id, first_name, last_name, date_of_birth, phone, email, national_id, address, status)`
 - `employees(employee_id, branch_id, employee_code, job_title, email, salary, status)`
-- `users(user_id, customer_id, employee_id, username, password_hash, role, is_active, must_change_password, account_locked, last_login)`
+- `users(user_id, customer_id, employee_id, staff_code, username, password_hash, role, is_active, must_change_password, account_locked, last_login)`
 - `login_history(login_history_id, user_id, attempted_username, success_flag, event_type, failure_reason, occurred_at)`
 - `transaction_reversals(reversal_id, original_transaction_id, reversal_transaction_id, reason, reversed_by, reversed_at, status)`
 - `beneficiaries(beneficiary_id, customer_id, source_account_id, beneficiary_account_id, nickname, status)`
@@ -155,6 +155,7 @@ erDiagram
 - `audit_log(audit_id, table_name, record_id, action_name, action_by, action_date)`
 - `deposit_schemes(scheme_id, scheme_code, scheme_type, annual_profit_rate, calculation_method, tax_percentage, status)`
 - `deposit_certificates(certificate_id, certificate_number, customer_id, scheme_id, expected_maturity_amount, maturity_date, status)`
+- `loan_types(loan_type_id, type_name, descriptions, income/fee eligibility, interest_method, amount and term limits, status)`
 
 ## Normalization
 

@@ -23,7 +23,7 @@ async function listUsers(req, res, next) {
       if (binds.role && !["ADMIN", "MANAGER", "EMPLOYEE", "CUSTOMER"].includes(binds.role)) throw badRequest("Invalid role filter.");
       if (binds.active && !["Y", "N"].includes(binds.active)) throw badRequest("Invalid active filter.");
       const result = await connection.execute(
-        `SELECT u.user_id,u.username,u.role,u.is_active,u.account_locked,u.must_change_password,
+        `SELECT u.user_id,u.username,u.staff_code,u.role,u.is_active,u.account_locked,u.must_change_password,
                 u.failed_login_count,u.last_login,u.created_at,u.updated_at,
                 e.employee_id,e.employee_code,e.first_name||' '||e.last_name employee_name,
                 e.job_title,e.branch_id,b.branch_name,
@@ -72,7 +72,7 @@ async function createStaffUser(req, res, next) {
     if (!/^[a-z0-9._-]{4,50}$/.test(username)) throw badRequest("Username must be 4-50 characters using letters, numbers, dots, underscores, or hyphens.");
     connection = await getConnection();
     const employeeResult = await connection.execute(
-      `SELECT e.employee_id,e.branch_id,e.status,
+      `SELECT e.employee_id,e.employee_code,e.branch_id,e.status,
               CASE WHEN EXISTS (SELECT 1 FROM users u WHERE u.employee_id=e.employee_id) THEN 1 ELSE 0 END has_user
          FROM employees e WHERE e.employee_id=:employeeId`, { employeeId: Number(req.body.employeeId) }
     );
@@ -86,10 +86,10 @@ async function createStaffUser(req, res, next) {
     const passwordHash = await hashPassword(req.body.temporaryPassword);
     await setClientIdentifier(connection, req.user);
     const result = await connection.execute(
-      `INSERT INTO users(employee_id,username,password_hash,role,is_active,must_change_password,password_changed_at,updated_at)
-       VALUES(:employeeId,:username,:passwordHash,:role,:isActive,:mustChange,NULL,SYSTIMESTAMP)
+      `INSERT INTO users(employee_id,staff_code,username,password_hash,role,is_active,must_change_password,password_changed_at,updated_at)
+       VALUES(:employeeId,:staffCode,:username,:passwordHash,:role,:isActive,:mustChange,NULL,SYSTIMESTAMP)
        RETURNING user_id INTO :userId`,
-      { employeeId: employee.EMPLOYEE_ID, username, passwordHash, role: req.body.role, isActive: req.body.isActive === false ? "N" : "Y", mustChange: req.body.forcePasswordChange === false ? "N" : "Y", userId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } }
+      { employeeId: employee.EMPLOYEE_ID, staffCode: employee.EMPLOYEE_CODE, username, passwordHash, role: req.body.role, isActive: req.body.isActive === false ? "N" : "Y", mustChange: req.body.forcePasswordChange === false ? "N" : "Y", userId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } }
     );
     await connection.execute(
       `INSERT INTO audit_log(table_name,record_id,action_name,action_by,new_summary)
@@ -106,7 +106,7 @@ async function getUserDetails(req, res, next) {
   try {
     await withConnection(getConnection, async (connection) => {
       const result = await connection.execute(
-        `SELECT u.user_id,u.username,u.role,u.is_active,u.account_locked,u.locked_at,u.must_change_password,
+        `SELECT u.user_id,u.username,u.staff_code,u.role,u.is_active,u.account_locked,u.locked_at,u.must_change_password,
                 u.failed_login_count,u.last_login,u.created_at,u.updated_at,
                 e.employee_id,e.employee_code,e.first_name||' '||e.last_name employee_name,e.job_title,b.branch_name,
                 c.customer_id,c.first_name||' '||c.last_name customer_name

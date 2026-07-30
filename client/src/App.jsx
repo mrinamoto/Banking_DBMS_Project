@@ -17,6 +17,7 @@ import Statement from "./pages/Statement";
 import Beneficiaries from "./pages/Beneficiaries";
 import Kyc from "./pages/Kyc";
 import DepositSuite from "./pages/DepositSuite";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function Protected() {
@@ -27,7 +28,8 @@ function Protected() {
   if (!user) return <Navigate to="/login" replace />;
   return (
     <Layout>
-      <Routes>
+      <ErrorBoundary>
+        <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/accounts" element={<Accounts />} />
@@ -45,7 +47,8 @@ function Protected() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/deposits" element={<DepositSuite />} />
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+        </Routes>
+      </ErrorBoundary>
     </Layout>
   );
 }
