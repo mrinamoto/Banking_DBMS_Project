@@ -31,6 +31,10 @@ sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
 
 The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data.
 
+## Phase 1 staff-login upgrade
+
+For an existing schema, run `database/migrations/001_staff_users_explorer_dashboard.sql` (or paste the equivalent `database/worksheet/phase1_upgrade.sql`) as the schema owner. It adds `USERS.MUST_CHANGE_PASSWORD`, `ACCOUNT_LOCKED`, `LOCKED_AT`, `PASSWORD_CHANGED_AT`, `UPDATED_AT`, the `LOGIN_HISTORY` table, and supporting indexes without dropping or rewriting existing rows. The fresh installer creates the same final shape.
+
 ## Transaction rule
 
 Packages use validation, `SAVEPOINT`, `SELECT ... FOR UPDATE`, balance updates, and ledger inserts. They do not call `COMMIT`. Express commits once after the entire PL/SQL operation succeeds and rolls back after an error. This is the project's ACID boundary.
@@ -56,6 +60,8 @@ ORDER BY object_type, object_name;
 SELECT name, type, line, position, text
 FROM user_errors
 ORDER BY name, sequence;
+
+Run the read-only Phase 1 checks with `@database/tests/phase1_tests.sql`. They verify lifecycle columns, the one-employee/one-login constraint, and the allowlisted explorer indexes; they do not create test data.
 ```
 
 Oracle execution evidence is pending until these commands are run against the student's local schema.

@@ -11,6 +11,8 @@ import AnimatedAuth from "./pages/AnimatedAuth";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
+import UserManagement from "./pages/UserManagement";
+import DatabaseExplorer from "./pages/DatabaseExplorer";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function Protected() {
@@ -31,6 +33,8 @@ function Protected() {
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/reports" element={["ADMIN", "MANAGER"].includes(user.role) ? <Reports /> : <Navigate to="/" />} />
         <Route path="/audit" element={user.role === "ADMIN" ? <Audit /> : <Navigate to="/" />} />
+        <Route path="/user-management" element={["ADMIN", "MANAGER"].includes(user.role) ? <UserManagement /> : <Navigate to="/" />} />
+        <Route path="/database-explorer" element={["ADMIN", "MANAGER"].includes(user.role) ? <DatabaseExplorer /> : <Navigate to="/" />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

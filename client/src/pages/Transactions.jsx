@@ -29,6 +29,7 @@ export default function Transactions() {
 
   async function submit(event) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     try {
       const url = mode === "transfer" ? "/transfers" : `/transactions/${mode}`;

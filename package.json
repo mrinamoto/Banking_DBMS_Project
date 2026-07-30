@@ -4,6 +4,7 @@
     "client:build": "npm --prefix client run build",
     "client:lint": "npm --prefix client run lint",
     "server:start": "npm --prefix server start",
+    "db:test": "npm --prefix server run db:test",
     "server:check": "npm --prefix server run check",
     "server:test": "npm --prefix server test"
   },

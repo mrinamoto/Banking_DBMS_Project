@@ -6,3 +6,8 @@ CREATE INDEX idx_transactions_type_date ON transactions(transaction_type, transa
 CREATE INDEX idx_loans_customer_status ON loans(customer_id, status);
 CREATE INDEX idx_loans_status_date ON loans(status, application_date);
 CREATE INDEX idx_audit_date ON audit_log(action_date DESC);
+CREATE INDEX idx_users_username_lower ON users(LOWER(username));
+CREATE INDEX idx_users_role_active ON users(role, is_active, account_locked);
+CREATE INDEX idx_users_employee ON users(employee_id);
+CREATE INDEX idx_login_history_user_date ON login_history(user_id, occurred_at DESC);
+CREATE INDEX idx_login_history_attempt_date ON login_history(attempted_username, occurred_at DESC);
