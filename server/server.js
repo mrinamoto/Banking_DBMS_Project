@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("node:path");
+require("dotenv").config({ path: path.join(__dirname, ".env"), quiet: true });
 const createApp = require("./app");
 const { initializePool, closePool } = require("./config/db");
 

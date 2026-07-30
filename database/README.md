@@ -29,7 +29,13 @@ sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
 9. `sql/03_insert_sample_data.sql` — fictional classroom data
 10. `USER_ERRORS` compiler report
 
-The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data.
+The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data. The fresh installer seeds only fictional deposit scheme definitions; it creates no active deposits, certificates, balances, or ledger postings.
+
+## Phase 1 staff-login upgrade
+
+For an existing schema, run `database/migrations/001_staff_users_explorer_dashboard.sql` (or paste the equivalent `database/worksheet/phase1_upgrade.sql`) as the schema owner. It adds `USERS.MUST_CHANGE_PASSWORD`, `ACCOUNT_LOCKED`, `LOCKED_AT`, `PASSWORD_CHANGED_AT`, `UPDATED_AT`, the `LOGIN_HISTORY` table, and supporting indexes without dropping or rewriting existing rows. The fresh installer creates the same final shape.
+
+Phase 2 upgrades use `database/migrations/002_reversal_statement_customer_tools.sql` (or `database/worksheet/phase2_upgrade.sql`). This adds package-controlled deposit/withdrawal reversal metadata, statement view support, preferences, beneficiaries, and customer KYC. The migration never changes or deletes existing ledger rows; it recompiles the maintained banking package and views after the DDL.
 
 ## Transaction rule
 
@@ -56,6 +62,16 @@ ORDER BY object_type, object_name;
 SELECT name, type, line, position, text
 FROM user_errors
 ORDER BY name, sequence;
+
+Run the read-only Phase 1 checks with `@database/tests/phase1_tests.sql`. They verify lifecycle columns, the one-employee/one-login constraint, and the allowlisted explorer indexes; they do not create test data.
+
+After Phase 2 migration, run `@database/tests/phase2_tests.sql` for read-only object and constraint checks, then run the transactional acceptance suite. Reversal tests must run only in a disposable development schema because they create and roll back ledger test rows.
+
+## Phase 3 educational deposit tools
+
+Run `@database/migrations/003_deposit_profit_suite.sql` on an existing schema, then `@database/tests/phase3_tests.sql`. The upgrade adds `DEPOSIT_SCHEMES`, `DEPOSIT_CERTIFICATES`, indexes, fictional scheme seeds, and `VW_DEPOSIT_CERTIFICATE_REMINDERS` without changing accounts or transactions. The Express calculator implements simple interest, monthly compounding, tax, DPS annuity estimates, maturity dates, and an early-withdrawal preview. Saving a quotation stores status `QUOTATION` only; it never activates a deposit or changes a balance.
+
+FreeSQL worksheets are self-contained: `worksheet/full_upgrade.sql` (non-destructive existing-schema repair), `worksheet/full_fresh_install.sql` (empty schema), `worksheet/full_reset_and_install.sql` (destructive development reset), and `worksheet/verify_install.sql` (read-only verification). They deliberately contain no `@` or `@@` child-file dependencies.
 ```
 
 Oracle execution evidence is pending until these commands are run against the student's local schema.

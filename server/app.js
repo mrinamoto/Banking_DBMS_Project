@@ -4,6 +4,10 @@ const authRoutes = require("./routes/authRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const bankingRoutes = require("./routes/bankingRoutes");
+const staffRoutes = require("./routes/staffRoutes");
+const explorerRoutes = require("./routes/explorerRoutes");
+const customerToolsRoutes = require("./routes/customerToolsRoutes");
+const depositRoutes = require("./routes/depositRoutes");
 const { notFound, errorHandler } = require("./middleware/errors");
 const { getConnection } = require("./config/db");
 
@@ -27,6 +31,10 @@ function createApp() {
     }
   });
   app.use("/api/auth", authRoutes);
+  app.use("/api/staff", staffRoutes);
+  app.use("/api/explorer", explorerRoutes);
+  app.use("/api", customerToolsRoutes);
+  app.use("/api", depositRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/customers", customerRoutes);
   app.use("/api", bankingRoutes);

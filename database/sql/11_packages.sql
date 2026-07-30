@@ -4,6 +4,7 @@ CREATE OR REPLACE PACKAGE pkg_banking_operations AS
   PROCEDURE withdraw(p_account_number VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_reference OUT VARCHAR2);
   PROCEDURE transfer_funds(p_from_account VARCHAR2, p_to_account VARCHAR2, p_amount NUMBER, p_processed_by NUMBER, p_owner_customer_id NUMBER, p_reference OUT VARCHAR2);
   PROCEDURE change_status(p_account_id NUMBER, p_status VARCHAR2);
+  PROCEDURE reverse_transaction(p_transaction_id NUMBER, p_reversed_by NUMBER, p_reason VARCHAR2, p_reference OUT VARCHAR2);
   FUNCTION get_available_balance(p_account_number VARCHAR2) RETURN NUMBER;
 END pkg_banking_operations;
 /
@@ -95,6 +96,42 @@ CREATE OR REPLACE PACKAGE BODY pkg_banking_operations AS
     IF p_status='CLOSED' AND v_balance<>0 THEN RAISE_APPLICATION_ERROR(-20026,'A non-zero account cannot be closed.'); END IF;
     UPDATE accounts SET status=p_status,close_date=CASE WHEN p_status='CLOSED' THEN SYSDATE ELSE NULL END WHERE account_id=p_account_id;
   EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20027,'Account not found.'); END;
+
+  PROCEDURE reverse_transaction(p_transaction_id NUMBER, p_reversed_by NUMBER, p_reason VARCHAR2, p_reference OUT VARCHAR2) IS
+    v_account_id NUMBER; v_amount NUMBER(15,2); v_type VARCHAR2(30); v_status VARCHAR2(12);
+    v_account_number VARCHAR2(24); v_balance NUMBER(15,2); v_new_balance NUMBER(15,2);
+    v_reversal_type VARCHAR2(30); v_reversal_id NUMBER;
+  BEGIN
+    SAVEPOINT reversal_start;
+    IF TRIM(p_reason) IS NULL THEN RAISE_APPLICATION_ERROR(-20029,'Reversal reason is required.'); END IF;
+    SELECT t.account_id,t.amount,t.transaction_type,t.status,a.account_number
+      INTO v_account_id,v_amount,v_type,v_status,v_account_number
+      FROM transactions t JOIN accounts a ON a.account_id=t.account_id
+     WHERE t.transaction_id=p_transaction_id FOR UPDATE;
+    IF v_status <> 'SUCCESS' THEN RAISE_APPLICATION_ERROR(-20030,'Only successful transactions can be reversed.'); END IF;
+    IF v_type NOT IN ('DEPOSIT','WITHDRAWAL') THEN RAISE_APPLICATION_ERROR(-20031,'Only deposits and withdrawals can be reversed.'); END IF;
+    SELECT COUNT(*) INTO v_reversal_id FROM transaction_reversals WHERE original_transaction_id=p_transaction_id;
+    IF v_reversal_id > 0 THEN RAISE_APPLICATION_ERROR(-20032,'This transaction has already been reversed.'); END IF;
+    SELECT balance,status INTO v_balance,v_status FROM accounts WHERE account_id=v_account_id FOR UPDATE;
+    IF v_status <> 'ACTIVE' THEN RAISE_APPLICATION_ERROR(-20035,'Account is not active.'); END IF;
+    IF v_type='DEPOSIT' THEN
+      v_new_balance:=v_balance-v_amount; v_reversal_type:='REVERSAL_DEBIT';
+      IF v_new_balance < 0 THEN RAISE_APPLICATION_ERROR(-20033,'Reversal would create a negative balance.'); END IF;
+    ELSE
+      v_new_balance:=v_balance+v_amount; v_reversal_type:='REVERSAL_CREDIT';
+    END IF;
+    p_reference:=reference('REV');
+    UPDATE accounts SET balance=v_new_balance,last_transaction_date=SYSTIMESTAMP WHERE account_id=v_account_id;
+    INSERT INTO transactions(account_id,transaction_type,amount,previous_balance,new_balance,reference_no,description,processed_by)
+    VALUES(v_account_id,v_reversal_type,v_amount,v_balance,v_new_balance,p_reference,'Reversal of transaction '||p_transaction_id,p_reversed_by)
+    RETURNING transaction_id INTO v_reversal_id;
+    INSERT INTO transaction_reversals(original_transaction_id,reversal_transaction_id,reason,reversed_by)
+    VALUES(p_transaction_id,v_reversal_id,TRIM(p_reason),p_reversed_by);
+    INSERT INTO audit_log(table_name,record_id,action_name,action_by,new_summary)
+    VALUES('TRANSACTIONS',p_transaction_id,'REVERSAL',NVL(TO_CHAR(p_reversed_by),'SYSTEM'),'reversal_reference='||p_reference||';reason='||TRIM(p_reason));
+  EXCEPTION WHEN NO_DATA_FOUND THEN ROLLBACK TO reversal_start; RAISE_APPLICATION_ERROR(-20034,'Original transaction not found.');
+    WHEN OTHERS THEN ROLLBACK TO reversal_start; RAISE;
+  END;
 
   FUNCTION get_available_balance(p_account_number VARCHAR2) RETURN NUMBER IS v_balance NUMBER; v_min NUMBER;
   BEGIN SELECT a.balance,t.min_balance INTO v_balance,v_min FROM accounts a JOIN account_types t ON t.account_type_id=a.account_type_id WHERE a.account_number=p_account_number AND a.status='ACTIVE'; RETURN GREATEST(v_balance-v_min,0);

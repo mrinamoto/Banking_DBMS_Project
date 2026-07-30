@@ -1,4 +1,4 @@
-# Oracle Database Free Setup
+﻿# Oracle Database Free Setup
 
 Use Oracle Autonomous Database Free from Oracle Cloud so faculty can demo the project from any computer with a browser. Oracle documentation confirms Always Free Autonomous AI Database is available for Oracle Cloud Free Tier accounts and supports standard Oracle client connections.
 
@@ -15,7 +15,7 @@ Official references:
 2. Create or sign in to an Oracle Cloud Free Tier account.
 3. Complete email, phone, and payment verification if Oracle asks for it.
 
-`[Screenshot: Oracle Cloud Free signup page]`
+`Optional evidence screenshot (if captured): Oracle Cloud Free signup page`
 
 ## 2. Create Oracle Database
 
@@ -27,7 +27,7 @@ Official references:
 6. Create an ADMIN password and keep it private.
 7. Wait until Lifecycle State becomes Available.
 
-`[Screenshot: Create Autonomous Database form]`
+`Optional evidence screenshot (if captured): Create Autonomous Database form`
 
 ## 3. Create Database User
 
@@ -41,7 +41,7 @@ ALTER USER BANK_APP QUOTA UNLIMITED ON DATA;
 
 Use the `BANK_APP` user for the application, not `ADMIN`.
 
-`[Screenshot: Database Actions SQL worksheet creating BANK_APP]`
+`Optional evidence screenshot (if captured): Database Actions SQL worksheet creating BANK_APP`
 
 ## 4. Download credentials if required
 
@@ -54,13 +54,13 @@ If your database requires mTLS:
 5. Create a wallet password.
 6. Store the wallet securely.
 
-`[Screenshot: Database Connection wallet download]`
+`Optional evidence screenshot (if captured): Database Connection wallet download`
 
 ## 5. Find Connection String
 
 On the Database Connection page, copy a high or low service connection string. For Render, prefer a normal `DB_CONNECT_STRING` value when mTLS is not required. If mTLS is required, also configure wallet files and `TNS_ADMIN`.
 
-`[Screenshot: connection string list]`
+`Optional evidence screenshot (if captured): connection string list`
 
 ## 6. Configure environment variables
 
@@ -74,7 +74,7 @@ SESSION_SECRET=random_32_plus_character_secret
 CLIENT_ORIGIN=https://your-vercel-app.vercel.app
 ```
 
-`[Screenshot: Render environment variables]`
+`Optional evidence screenshot (if captured): Render environment variables`
 
 ## 7. Test connection
 
@@ -90,7 +90,7 @@ Expected result:
 { "status": "ok", "database": "connected" }
 ```
 
-`[Screenshot: health endpoint connected]`
+`Optional evidence screenshot (if captured): health endpoint connected`
 
 ## 8. Run database/run_all.sql
 
@@ -102,7 +102,9 @@ Connect as `BANK_APP` and run:
 
 This installs tables, constraints, indexes, functions, packages, procedures, views, triggers, and sample data.
 
-`[Screenshot: SQLcl running database/run_all.sql]`
+The sample data includes only fictional `DEPOSIT_SCHEMES` definitions. It does not create active deposits or financial postings. For a schema that already contains the prior phases, run `@database/migrations/003_deposit_profit_suite.sql` followed by `@database/tests/phase3_tests.sql`. The self-contained FreeSQL alternatives are `database/worksheet/full_upgrade.sql`, `full_fresh_install.sql`, and the read-only `verify_install.sql`; they contain no `@`/`@@` dependencies.
+
+`Optional evidence screenshot (if captured): SQLcl running database/run_all.sql`
 
 ## 9. Compile Procedures
 
@@ -114,7 +116,7 @@ Verify:
 SELECT object_name, status FROM user_objects WHERE object_type = 'PROCEDURE';
 ```
 
-`[Screenshot: procedure status valid]`
+`Optional evidence screenshot (if captured): procedure status valid`
 
 ## 10. Compile Packages
 
@@ -128,7 +130,7 @@ FROM user_objects
 WHERE object_type LIKE 'PACKAGE%';
 ```
 
-`[Screenshot: package status valid]`
+`Optional evidence screenshot (if captured): package status valid`
 
 ## 11. Compile Triggers
 
@@ -140,7 +142,7 @@ Verify:
 SELECT trigger_name, status FROM user_triggers;
 ```
 
-`[Screenshot: trigger status enabled]`
+`Optional evidence screenshot (if captured): trigger status enabled`
 
 ## 12. Verify USER_OBJECTS
 
@@ -153,7 +155,7 @@ ORDER BY object_type, status;
 
 All important objects should be `VALID`.
 
-`[Screenshot: USER_OBJECTS valid summary]`
+`Optional evidence screenshot (if captured): USER_OBJECTS valid summary`
 
 ## 13. Verify USER_ERRORS
 
@@ -165,7 +167,7 @@ ORDER BY name, sequence;
 
 This should return no rows.
 
-`[Screenshot: USER_ERRORS no rows]`
+`Optional evidence screenshot (if captured): USER_ERRORS no rows`
 
 ## 14. Run Acceptance Tests
 
@@ -175,13 +177,13 @@ Run:
 @database/tests/acceptance_tests.sql
 ```
 
-`[Screenshot: acceptance tests completed]`
+`Optional evidence screenshot (if captured): acceptance tests completed`
 
 ## 15. Connect Backend
 
 Set `DB_USER`, `DB_PASSWORD`, `DB_CONNECT_STRING`, and `SESSION_SECRET` in Render or local `.env`. Start the server and verify `/api/health`.
 
-`[Screenshot: Render backend logs connected]`
+`Optional evidence screenshot (if captured): Render backend logs connected`
 
 ## 16. Test Frontend
 
@@ -193,4 +195,4 @@ VITE_API_URL=https://your-render-service.onrender.com/api
 
 Open the Vercel app and sign in.
 
-`[Screenshot: Vercel app login success]`
+`Optional evidence screenshot (if captured): Vercel app login success`

@@ -11,11 +11,14 @@ function requiredDatabaseConfig() {
   if (missing.length) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
-  return {
+  const config = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     connectString: process.env.DB_CONNECT_STRING,
   };
+  if (process.env.DB_WALLET_DIR) config.walletLocation = process.env.DB_WALLET_DIR;
+  if (process.env.DB_WALLET_PASSWORD) config.walletPassword = process.env.DB_WALLET_PASSWORD;
+  return config;
 }
 
 async function initializePool() {

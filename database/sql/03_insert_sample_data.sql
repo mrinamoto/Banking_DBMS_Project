@@ -1,5 +1,9 @@
 -- Fictional demonstration data. Application users are intentionally created separately
 -- with server/scripts/generate-demo-hash.js so no reusable password is stored in source.
+INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) VALUES('FD-SIMPLE','Classroom Fixed Deposit','FIXED_DEPOSIT',10000,5000000,3,36,8,'SIMPLE','AT_MATURITY',10,3);
+INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) VALUES('FD-COMPOUND','Monthly Compound Deposit','MONTHLY_PROFIT',10000,5000000,6,36,8.5,'MONTHLY_COMPOUND','AT_MATURITY',10,3);
+INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate) VALUES('DPS-EDU','Educational DPS','DPS',500,100000,12,36,7.25,'MONTHLY_COMPOUND','RECURRING',5,2);
+INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate,student_only) VALUES('STUDENT-SAVE','Student Savings Estimate','STUDENT_SAVINGS',1000,100000,3,24,6,'SIMPLE','AT_MATURITY',0,2,'Y');
 INSERT INTO branches(branch_code,branch_name,city,address,phone,swift_code) VALUES('DHK-001','Dhanmondi Branch','Dhaka','Road 27, Dhanmondi','02-55501001','SBMSBDDH001');
 INSERT INTO branches(branch_code,branch_name,city,address,phone,swift_code) VALUES('CTG-001','Agrabad Branch','Chattogram','Commercial Area, Agrabad','02-55501002','SBMSBDDH002');
 INSERT INTO account_types(type_name,description,min_balance,annual_interest_rate) VALUES('Savings','Personal savings account',1000,3.50);
@@ -8,6 +12,7 @@ INSERT INTO loan_types(type_name,min_amount,max_amount,annual_interest_rate,min_
 INSERT INTO loan_types(type_name,min_amount,max_amount,annual_interest_rate,min_term_months,max_term_months) VALUES('Home Loan',500000,10000000,8.75,12,240);
 INSERT INTO customers(first_name,last_name,date_of_birth,gender,phone,email,national_id,address,occupation,annual_income) VALUES('Nadia','Rahman',DATE '1994-05-14','F','01710000001','nadia.rahman@example.test','NID-DEMO-001','Dhanmondi, Dhaka','Engineer',900000);
 INSERT INTO customers(first_name,last_name,date_of_birth,gender,phone,email,national_id,address,occupation,annual_income) VALUES('Arif','Hasan',DATE '1989-11-02','M','01710000002','arif.hasan@example.test','NID-DEMO-002','Agrabad, Chattogram','Teacher',720000);
+INSERT INTO customer_kyc(customer_id,status) SELECT customer_id,'PENDING' FROM customers WHERE national_id IN ('NID-DEMO-001','NID-DEMO-002');
 INSERT INTO employees(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'EMP-001','Samira','Khan','EMP-NID-001','Branch Manager','samira.khan@example.test','01810000001',85000 FROM branches WHERE branch_code='DHK-001';
 INSERT INTO employees(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'EMP-002','Rafi','Ahmed','EMP-NID-002','Bank Officer','rafi.ahmed@example.test','01810000002',52000 FROM branches WHERE branch_code='DHK-001';
 DECLARE v_number VARCHAR2(24); v_customer NUMBER; v_branch NUMBER; v_type NUMBER; BEGIN
