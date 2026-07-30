@@ -28,5 +28,12 @@ SELECT * FROM vw_account_transaction_summary ORDER BY transaction_count DESC FET
 SELECT u.username,e.first_name||' '||e.last_name employee_name,COUNT(t.transaction_id) processed_count,NVL(SUM(t.amount),0) volume FROM users u JOIN employees e ON e.employee_id=u.employee_id LEFT JOIN transactions t ON t.processed_by=u.user_id GROUP BY u.username,e.first_name,e.last_name ORDER BY processed_count DESC;
 -- 15 Large transactions compared with overall average
 SELECT reference_no,transaction_type,amount,transaction_date FROM transactions WHERE amount>(SELECT AVG(amount)*2 FROM transactions) ORDER BY amount DESC;
+
+-- Phase 2: compensating entries and statement rows (read-only diagnostics)
+SELECT tr.original_transaction_id,tr.reversal_transaction_id,tr.reason,tr.reversed_at
+FROM transaction_reversals tr ORDER BY tr.reversed_at DESC;
+
+SELECT * FROM vw_account_statement WHERE account_id=:account_id
+ORDER BY transaction_date,transaction_id;
 -- 16 Customer outstanding loans
 SELECT c.customer_id,c.first_name||' '||c.last_name customer_name,NVL(SUM(l.outstanding_balance),0) outstanding FROM customers c LEFT JOIN loans l ON l.customer_id=c.customer_id AND l.status='ACTIVE' GROUP BY c.customer_id,c.first_name,c.last_name;

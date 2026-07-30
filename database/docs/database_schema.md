@@ -5,6 +5,13 @@ Version: 1.0
 
 ---
 
+Phase 2 additions to the maintained schema are `TRANSACTION_REVERSALS` (linked
+compensating ledger rows), `BENEFICIARIES`, `CUSTOMER_KYC`, and
+`USER_PREFERENCES`. The transaction type check also includes `REVERSAL_DEBIT`
+and `REVERSAL_CREDIT`. See `database/sql/01_create_tables.sql` for the
+authoritative column definitions and `database/migrations/002_reversal_statement_customer_tools.sql`
+for the non-destructive upgrade.
+
 # 1. CUSTOMERS
 
 Description:

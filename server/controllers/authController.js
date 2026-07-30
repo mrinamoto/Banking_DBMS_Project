@@ -169,6 +169,12 @@ async function register(req, res, next) {
       }
     );
 
+    await connection.execute(
+      `INSERT INTO customer_kyc(customer_id,status)
+       VALUES(:customerId,'PENDING')`,
+      { customerId }
+    );
+
     await connection.commit();
 
     const profile = {

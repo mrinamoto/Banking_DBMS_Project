@@ -13,6 +13,9 @@ import Settings from "./pages/Settings";
 import Transactions from "./pages/Transactions";
 import UserManagement from "./pages/UserManagement";
 import DatabaseExplorer from "./pages/DatabaseExplorer";
+import Statement from "./pages/Statement";
+import Beneficiaries from "./pages/Beneficiaries";
+import Kyc from "./pages/Kyc";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function Protected() {
@@ -31,6 +34,9 @@ function Protected() {
         <Route path="/employees" element={["ADMIN", "MANAGER"].includes(user.role) ? <Employees /> : <Navigate to="/" />} />
         <Route path="/loans" element={<Loans />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/statement" element={<Statement />} />
+        <Route path="/beneficiaries" element={user.role === "CUSTOMER" ? <Beneficiaries /> : ["ADMIN", "MANAGER"].includes(user.role) ? <Beneficiaries /> : <Navigate to="/" />} />
+        <Route path="/kyc" element={["ADMIN", "MANAGER", "CUSTOMER"].includes(user.role) ? <Kyc /> : <Navigate to="/" />} />
         <Route path="/reports" element={["ADMIN", "MANAGER"].includes(user.role) ? <Reports /> : <Navigate to="/" />} />
         <Route path="/audit" element={user.role === "ADMIN" ? <Audit /> : <Navigate to="/" />} />
         <Route path="/user-management" element={["ADMIN", "MANAGER"].includes(user.role) ? <UserManagement /> : <Navigate to="/" />} />

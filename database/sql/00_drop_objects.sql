@@ -31,6 +31,7 @@ BEGIN
   drop_if_present('VIEW', 'VW_ACCOUNT_TRANSACTION_SUMMARY');
   drop_if_present('VIEW', 'VW_BRANCH_PERFORMANCE');
   drop_if_present('VIEW', 'VW_CUSTOMER_ACCOUNT_SUMMARY');
+  drop_if_present('VIEW', 'VW_ACCOUNT_STATEMENT');
 
   drop_if_present('PROCEDURE', 'PR_TRANSFER');
   drop_if_present('PROCEDURE', 'PR_WITHDRAW');
@@ -52,6 +53,10 @@ BEGIN
   drop_if_present('TRIGGER', 'TRG_AUDIT_CUSTOMER_UPDATE');
 
   drop_if_present('TABLE', 'LOAN_PAYMENTS', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'CUSTOMER_KYC', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'BENEFICIARIES', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'USER_PREFERENCES', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'TRANSACTION_REVERSALS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'FUND_TRANSFERS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'TRANSACTIONS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'LOANS', ' CASCADE CONSTRAINTS PURGE');

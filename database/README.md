@@ -35,6 +35,8 @@ The installer never calls `sql/00_drop_objects.sql`. That cleanup file is develo
 
 For an existing schema, run `database/migrations/001_staff_users_explorer_dashboard.sql` (or paste the equivalent `database/worksheet/phase1_upgrade.sql`) as the schema owner. It adds `USERS.MUST_CHANGE_PASSWORD`, `ACCOUNT_LOCKED`, `LOCKED_AT`, `PASSWORD_CHANGED_AT`, `UPDATED_AT`, the `LOGIN_HISTORY` table, and supporting indexes without dropping or rewriting existing rows. The fresh installer creates the same final shape.
 
+Phase 2 upgrades use `database/migrations/002_reversal_statement_customer_tools.sql` (or `database/worksheet/phase2_upgrade.sql`). This adds package-controlled deposit/withdrawal reversal metadata, statement view support, preferences, beneficiaries, and customer KYC. The migration never changes or deletes existing ledger rows; it recompiles the maintained banking package and views after the DDL.
+
 ## Transaction rule
 
 Packages use validation, `SAVEPOINT`, `SELECT ... FOR UPDATE`, balance updates, and ledger inserts. They do not call `COMMIT`. Express commits once after the entire PL/SQL operation succeeds and rolls back after an error. This is the project's ACID boundary.
@@ -62,6 +64,8 @@ FROM user_errors
 ORDER BY name, sequence;
 
 Run the read-only Phase 1 checks with `@database/tests/phase1_tests.sql`. They verify lifecycle columns, the one-employee/one-login constraint, and the allowlisted explorer indexes; they do not create test data.
+
+After Phase 2 migration, run `@database/tests/phase2_tests.sql` for read-only object and constraint checks, then run the transactional acceptance suite. Reversal tests must run only in a disposable development schema because they create and roll back ledger test rows.
 ```
 
 Oracle execution evidence is pending until these commands are run against the student's local schema.

@@ -12,6 +12,8 @@ An academic, production-like Banking Management System built with React, Express
 - Admin/Manager staff User Management with lock/unlock, activation, reset, and audit actions.
 - Read-only allowlisted Database Explorer with server-side pagination, CSV export, and Manager branch scope.
 - Role-specific dashboards for Admin, Manager, Employee, and Customer.
+- Package-controlled deposit/withdrawal reversal with an auditable compensating ledger row.
+- Ownership-scoped bank statements, saved beneficiaries, customer KYC workflow, and practical settings.
 - Customer, employee, branch, account, loan, transaction, report, audit, and settings screens.
 - Open account, deposit, withdraw, transfer, freeze account, activate account, loan application, approval, rejection, and payment workflows.
 - Oracle audit logging through database triggers.
@@ -88,6 +90,8 @@ ORDER BY name, sequence;
 
 For an existing schema, run the non-destructive Phase 1 upgrade `@database/migrations/001_staff_users_explorer_dashboard.sql` (or paste `database/worksheet/phase1_upgrade.sql`), then run the read-only checks with `@database/tests/phase1_tests.sql`. Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Create temporary role users with `npm --prefix server run seed:demo-users -- <temporary-password>` and remove them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
 
+For Phase 2 on an existing schema, run `@database/migrations/002_reversal_statement_customer_tools.sql` (or paste `database/worksheet/phase2_upgrade.sql`), then `@database/tests/phase2_tests.sql`. Reversal is intentionally limited to successful `DEPOSIT` and `WITHDRAWAL` rows; transfers and loan payments are unsupported.
+
 ## Deployment
 
 - Deploy `client` to Vercel with `VITE_API_URL=https://your-render-service.onrender.com/api`.
@@ -138,6 +142,10 @@ erDiagram
 - `employees(employee_id, branch_id, employee_code, job_title, email, salary, status)`
 - `users(user_id, customer_id, employee_id, username, password_hash, role, is_active, must_change_password, account_locked, last_login)`
 - `login_history(login_history_id, user_id, attempted_username, success_flag, event_type, failure_reason, occurred_at)`
+- `transaction_reversals(reversal_id, original_transaction_id, reversal_transaction_id, reason, reversed_by, reversed_at, status)`
+- `beneficiaries(beneficiary_id, customer_id, source_account_id, beneficiary_account_id, nickname, status)`
+- `customer_kyc(kyc_id, customer_id, document_type, document_reference, status, reviewed_by, reviewed_at)`
+- `user_preferences(user_id, theme, rows_per_page, currency_display, notifications_enabled)`
 - `accounts(account_id, account_number, customer_id, branch_id, account_type_id, balance, status)`
 - `loans(loan_id, loan_number, customer_id, loan_type_id, requested_amount, status)`
 - `transactions(transaction_id, account_id, transaction_type, amount, reference_no, processed_by)`

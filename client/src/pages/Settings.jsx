@@ -1,55 +1,18 @@
-import { KeyRound, ShieldCheck, UserRound } from "lucide-react";
-import { PageHeader } from "../components/UI";
+import { useEffect, useState } from "react";
+import { KeyRound, Save, ShieldCheck, UserRound } from "lucide-react";
+import api, { messageFrom } from "../services/api";
+import { ErrorBox, Loading, PageHeader, Status } from "../components/UI";
 import { useAuth } from "../context/AuthContext";
 
 export default function Settings() {
-  const { user } = useAuth();
-  const permissions = {
-    ADMIN: "Full system access including audit logs, branches, reports, customers, employees, accounts, loans, and transactions.",
-    MANAGER: "Branch-level access for staff, customer, account, loan, transaction, and report workflows.",
-    EMPLOYEE: "Branch-level customer service access for customers, accounts, loans, and teller transactions.",
-    CUSTOMER: "Personal access for owned customer profile, accounts, transfers, loan applications, and history.",
-  };
-
-  return (
-    <>
-      <PageHeader title="Settings" subtitle="Review the active session and role-based banking permissions." />
-      <div className="grid gap-5 lg:grid-cols-3">
-        <section className="card lg:col-span-2">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="rounded-lg bg-emerald-100 p-3 text-emerald-700"><UserRound /></span>
-            <div>
-              <h2 className="text-lg font-bold">Signed-in user</h2>
-              <p className="text-sm text-slate-500">Session data comes from the verified JWT payload.</p>
-            </div>
-          </div>
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs uppercase text-slate-500">Username</dt><dd className="font-semibold">{user.username}</dd></div>
-            <div><dt className="text-xs uppercase text-slate-500">Role</dt><dd className="font-semibold">{user.role}</dd></div>
-            <div><dt className="text-xs uppercase text-slate-500">Customer ID</dt><dd className="font-semibold">{user.customerId || "Not linked"}</dd></div>
-            <div><dt className="text-xs uppercase text-slate-500">Employee ID</dt><dd className="font-semibold">{user.employeeId || "Not linked"}</dd></div>
-            <div><dt className="text-xs uppercase text-slate-500">Branch ID</dt><dd className="font-semibold">{user.branchId || "All allowed branches"}</dd></div>
-          </dl>
-        </section>
-        <section className="card">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="rounded-lg bg-blue-100 p-3 text-blue-700"><ShieldCheck /></span>
-            <h2 className="text-lg font-bold">Permission scope</h2>
-          </div>
-          <p className="text-sm leading-6 text-slate-600">{permissions[user.role]}</p>
-        </section>
-        <section className="card lg:col-span-3">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="rounded-lg bg-slate-100 p-3 text-slate-700"><KeyRound /></span>
-            <h2 className="text-lg font-bold">Security model</h2>
-          </div>
-          <div className="grid gap-4 text-sm text-slate-600 md:grid-cols-3">
-            <p>Passwords are hashed on the backend before they are stored in Oracle.</p>
-            <p>Protected API routes verify the JWT before accessing business data.</p>
-            <p>Role and branch checks run in Express controllers, not only in the React UI.</p>
-          </div>
-        </section>
-      </div>
-    </>
-  );
+  const { user } = useAuth(); const [data, setData] = useState(null); const [profile, setProfile] = useState({}); const [password, setPassword] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" }); const [preferences, setPreferences] = useState({ theme: "SYSTEM", rowsPerPage: 20, notificationsEnabled: true }); const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [busy, setBusy] = useState(false);
+  async function load() { try { const response = await api.get("/settings"); setData(response.data); const p = response.data.profile; setProfile({ firstName: p.CUSTOMER_FIRST_NAME || p.EMPLOYEE_FIRST_NAME || "", lastName: p.CUSTOMER_LAST_NAME || p.EMPLOYEE_LAST_NAME || "", phone: p.CUSTOMER_PHONE || p.EMPLOYEE_PHONE || "", email: p.CUSTOMER_EMAIL || p.EMPLOYEE_EMAIL || "", address: p.CUSTOMER_ADDRESS || "" }); const pref = response.data.preferences; setPreferences({ theme: pref.THEME, rowsPerPage: pref.ROWS_PER_PAGE, notificationsEnabled: pref.NOTIFICATIONS_ENABLED === "Y" }); setError(""); } catch (requestError) { setError(messageFrom(requestError)); } }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  async function saveProfile(event) { event.preventDefault(); await run(() => api.patch("/settings/profile", profile), "Profile updated."); }
+  async function savePassword(event) { event.preventDefault(); await run(() => api.post("/settings/password", password), "Password changed.", () => setPassword({ currentPassword: "", newPassword: "", confirmPassword: "" })); }
+  async function savePreferences(event) { event.preventDefault(); await run(() => api.patch("/settings/preferences", preferences), "Preferences saved."); }
+  async function run(operation, message, after) { if (busy) return; setBusy(true); try { await operation(); setNotice(message); after?.(); await load(); } catch (requestError) { setError(messageFrom(requestError)); } finally { setBusy(false); } }
+  if (!data && !error) return <Loading />;
+  const current = data?.profile; const profileAvailable = user.role === "CUSTOMER" || Boolean(user.employeeId);
+  return <><PageHeader title="Settings" subtitle="Profile, password security, login history, and local display preferences." /><ErrorBox message={error} />{notice && <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700" role="status">{notice}</div>}<div className="grid gap-5 lg:grid-cols-2"><form className="card" onSubmit={saveProfile}><div className="mb-4 flex items-center gap-3"><UserRound className="text-emerald-600" /><h2 className="text-lg font-bold">Profile</h2></div>{profileAvailable ? <><div className="grid gap-4 sm:grid-cols-2"><label className="field">First name<input required value={profile.firstName || ""} onChange={(event) => setProfile({ ...profile, firstName: event.target.value })} /></label><label className="field">Last name<input required value={profile.lastName || ""} onChange={(event) => setProfile({ ...profile, lastName: event.target.value })} /></label><label className="field">Phone<input required value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} /></label><label className="field">Email<input required type="email" value={profile.email || ""} onChange={(event) => setProfile({ ...profile, email: event.target.value })} /></label>{user.role === "CUSTOMER" && <label className="field sm:col-span-2">Address<textarea required value={profile.address || ""} onChange={(event) => setProfile({ ...profile, address: event.target.value })} /></label>}</div><button className="btn-primary mt-4" disabled={busy}><Save size={16} /> Save profile</button></> : <p className="text-sm text-slate-500">This Admin session is not linked to an employee profile.</p>}</form><form className="card" onSubmit={savePassword}><div className="mb-4 flex items-center gap-3"><KeyRound className="text-blue-600" /><h2 className="text-lg font-bold">Change password</h2></div><div className="grid gap-4"><label className="field">Current password<input required type="password" value={password.currentPassword} onChange={(event) => setPassword({ ...password, currentPassword: event.target.value })} /></label><label className="field">New password<input required minLength="10" type="password" value={password.newPassword} onChange={(event) => setPassword({ ...password, newPassword: event.target.value })} /></label><label className="field">Confirm new password<input required minLength="10" type="password" value={password.confirmPassword} onChange={(event) => setPassword({ ...password, confirmPassword: event.target.value })} /></label></div><button className="btn-primary mt-4" disabled={busy}>Change password</button></form><form className="card" onSubmit={savePreferences}><div className="mb-4 flex items-center gap-3"><ShieldCheck className="text-violet-600" /><h2 className="text-lg font-bold">Preferences</h2></div><div className="grid gap-4"><label className="field">Theme<select value={preferences.theme} onChange={(event) => setPreferences({ ...preferences, theme: event.target.value })}><option>LIGHT</option><option>DARK</option><option>SYSTEM</option></select></label><label className="field">Rows per page<select value={preferences.rowsPerPage} onChange={(event) => setPreferences({ ...preferences, rowsPerPage: Number(event.target.value) })}><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={preferences.notificationsEnabled} onChange={(event) => setPreferences({ ...preferences, notificationsEnabled: event.target.checked })} /> In-app notifications</label><p className="text-sm text-slate-500">Currency display: BDT</p></div><button className="btn-primary mt-4" disabled={busy}>Save preferences</button></form><section className="card"><h2 className="mb-4 text-lg font-bold">Session security</h2><dl className="grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-xs uppercase text-slate-500">Username</dt><dd className="font-semibold">{current?.USERNAME || user.username}</dd></div><div><dt className="text-xs uppercase text-slate-500">Role</dt><dd className="font-semibold">{current?.ROLE || user.role}</dd></div><div><dt className="text-xs uppercase text-slate-500">Last login</dt><dd className="font-semibold">{current?.LAST_LOGIN ? new Date(current.LAST_LOGIN).toLocaleString() : "Never"}</dd></div><div><dt className="text-xs uppercase text-slate-500">Failed logins</dt><dd className="font-semibold">{current?.FAILED_LOGIN_COUNT ?? 0}</dd></div><div><dt className="text-xs uppercase text-slate-500">Lock state</dt><dd><Status value={current?.ACCOUNT_LOCKED === "Y" ? "BLOCKED" : "ACTIVE"} /></dd></div><div><dt className="text-xs uppercase text-slate-500">Password change</dt><dd className="font-semibold">{current?.MUST_CHANGE_PASSWORD === "Y" ? "Required" : "Up to date"}</dd></div></dl><h3 className="mt-5 font-semibold">Recent login history</h3><div className="mt-2 max-h-56 overflow-auto text-sm">{data?.loginHistory?.map((entry, index) => <div className="flex justify-between border-b py-2" key={`${entry.OCCURRED_AT}-${index}`}><span>{entry.EVENT_TYPE} · {entry.SUCCESS_FLAG === "Y" ? "Success" : entry.FAILURE_REASON || "Failed"}</span><span className="text-slate-500">{new Date(entry.OCCURRED_AT).toLocaleString()}</span></div>)}</div></section></div></>;
 }
