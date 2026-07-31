@@ -896,11 +896,12 @@ INSERT INTO customer_kyc(customer_id,status,document_type,document_reference)
 SELECT c.customer_id,CASE WHEN MOD(c.customer_id,4)=0 THEN 'VERIFIED' ELSE 'PENDING' END,'NID','DEMO-KYC-'||c.national_id FROM customers c WHERE c.national_id LIKE 'DEMO-NID-%' AND NOT EXISTS (SELECT 1 FROM customer_kyc k WHERE k.customer_id=c.customer_id);
 
 DECLARE
-  v_number VARCHAR2(24); v_type NUMBER; v_branch NUMBER; v_amount NUMBER;
+  v_number VARCHAR2(24); v_type NUMBER; v_branch NUMBER; v_amount NUMBER; v_existing_account_count NUMBER;
 BEGIN
   SELECT account_type_id INTO v_type FROM account_types WHERE type_name='Savings';
   FOR c IN (SELECT c.customer_id,ROW_NUMBER() OVER (ORDER BY c.customer_id) rn FROM customers c WHERE c.national_id LIKE 'DEMO-NID-%') LOOP
-    IF NOT EXISTS (SELECT 1 FROM accounts a WHERE a.customer_id=c.customer_id) THEN
+    SELECT COUNT(*) INTO v_existing_account_count FROM accounts a WHERE a.customer_id=c.customer_id;
+    IF v_existing_account_count = 0 THEN
       SELECT branch_id INTO v_branch FROM branches WHERE branch_code=CASE MOD(c.rn-1,4) WHEN 0 THEN 'DHK-001' WHEN 1 THEN 'UTT-001' WHEN 2 THEN 'CTG-001' ELSE 'CHP-001' END;
       v_amount := 18000 + c.rn*250;
       pkg_banking_operations.open_account(c.customer_id,v_branch,v_type,v_amount,NULL,v_number);

@@ -106,17 +106,19 @@ For the Phase 2 viva data and service modules, use the updated `database/workshe
 
 ### Exact FreeSQL release sequence
 
-For a disposable development schema, paste these browser worksheets in order:
+For a disposable development schema, paste these browser worksheets and run the checks in order:
 
 1. `SELECT USER FROM dual;`
 2. `database/worksheet/full_reset_and_install.sql` (destructive; never use on valuable data).
 3. `database/worksheet/verify_install.sql`.
-4. `database/tests/viva_smoke_tests.sql`.
-5. `npm run db:test` from PowerShell.
-6. `npm --prefix server run seed:viva-users -- --base-secret "<secret-at-least-16-characters>"`.
-7. Start the backend and verify `http://localhost:5000/api/health`.
-8. Start the frontend and open `http://localhost:5173/login`.
-9. Exercise the four role checklists below.
+4. `npm run db:test` from PowerShell.
+5. `npm run db:doctor` from PowerShell.
+6. Seed staff accounts: `npm --prefix server run seed:viva-users -- --base-secret "<secret-at-least-16-characters>"`.
+7. Paste `database/tests/viva_smoke_tests.sql` (staff-ID checks are valid only after the seed succeeds).
+8. Paste `database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`.
+9. Start the backend and verify `http://localhost:5000/api/health`.
+10. Start the frontend and open `http://localhost:5173/login`.
+11. Exercise the four role checklists below.
 
 For an existing schema, use `full_upgrade.sql` instead of the reset worksheet. It preserves accounts, balances, and transaction history. Never run the reset worksheet automatically.
 
