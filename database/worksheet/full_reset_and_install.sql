@@ -20,14 +20,15 @@ DECLARE
     DBMS_OUTPUT.PUT_LINE('Dropped ' || p_object_type || ' ' || p_object_name);
   EXCEPTION
     WHEN OTHERS THEN
-      -- ORA-00942/04043/02289 mean that the requested object does not exist.
-      IF SQLCODE NOT IN (-942, -4043, -2289) THEN
+      -- Expected "object does not exist" errors:
+      -- ORA-00942 table/view, ORA-04043 object, ORA-04080 trigger,
+      -- ORA-02289 sequence.
+      IF SQLCODE NOT IN (-942, -4043, -4080, -2289) THEN
         RAISE;
       END IF;
   END drop_if_present;
 BEGIN
-  -- Standalone objects and packages are removed before their dependent tables.
-  drop_if_present('TABLE', 'BANK_PROFILE', ' CASCADE CONSTRAINTS PURGE');
+  -- Drop programmable objects before tables.
   drop_if_present('VIEW', 'VW_PENDING_LOAN_APPLICATIONS');
   drop_if_present('VIEW', 'VW_DAILY_TRANSACTION_TOTALS');
   drop_if_present('VIEW', 'VW_LOAN_SUMMARY');
@@ -37,53 +38,58 @@ BEGIN
   drop_if_present('VIEW', 'VW_ACCOUNT_STATEMENT');
   drop_if_present('VIEW', 'VW_DEPOSIT_CERTIFICATE_REMINDERS');
 
+  drop_if_present('TRIGGER', 'TRG_VALIDATE_USER_STAFF_CODE');
+  drop_if_present('TRIGGER', 'TRG_PROTECT_FINANCIAL_HISTORY');
+  drop_if_present('TRIGGER', 'TRG_AUDIT_LOAN_STATUS');
+  drop_if_present('TRIGGER', 'TRG_AUDIT_ACCOUNT_STATUS');
+  drop_if_present('TRIGGER', 'TRG_AUDIT_CUSTOMER_UPDATE');
+
   drop_if_present('PROCEDURE', 'PR_TRANSFER');
   drop_if_present('PROCEDURE', 'PR_WITHDRAW');
   drop_if_present('PROCEDURE', 'PR_DEPOSIT');
+
   drop_if_present('PACKAGE', 'PKG_LOAN_OPERATIONS');
   drop_if_present('PACKAGE', 'PKG_BANKING_OPERATIONS');
 
-  drop_if_present('FUNCTION', 'FN_GENERATE_LOAN_NUMBER');
   drop_if_present('FUNCTION', 'FN_AUDIT_ACTOR');
+  drop_if_present('FUNCTION', 'FN_GENERATE_LOAN_NUMBER');
   drop_if_present('FUNCTION', 'FN_GENERATE_ACCOUNT_NUMBER');
   drop_if_present('FUNCTION', 'FN_CALCULATE_EMI');
   drop_if_present('FUNCTION', 'FN_TOTAL_CUSTOMER_BALANCE');
   drop_if_present('FUNCTION', 'FN_GET_ACCOUNT_BALANCE');
 
-  -- Triggers are normally dropped with tables; explicit calls make intent clear.
-  drop_if_present('TRIGGER', 'TRG_PROTECT_FINANCIAL_HISTORY');
-  drop_if_present('TRIGGER', 'TRG_VALIDATE_USER_STAFF_CODE');
-  drop_if_present('TRIGGER', 'TRG_AUDIT_LOAN_STATUS');
-  drop_if_present('TRIGGER', 'TRG_AUDIT_ACCOUNT_STATUS');
-  drop_if_present('TRIGGER', 'TRG_AUDIT_CUSTOMER_UPDATE');
-
+  -- Drop child tables before their parents.
+  drop_if_present('TABLE', 'NOTIFICATIONS', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'SERVICE_REQUESTS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'LOAN_PAYMENTS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'CUSTOMER_KYC', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'DEPOSIT_CERTIFICATES', ' CASCADE CONSTRAINTS PURGE');
-  drop_if_present('TABLE', 'DEPOSIT_SCHEMES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'BENEFICIARIES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'USER_PREFERENCES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'TRANSACTION_REVERSALS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'FUND_TRANSFERS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'TRANSACTIONS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'LOANS', ' CASCADE CONSTRAINTS PURGE');
-  drop_if_present('TABLE', 'LOAN_TYPES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'ACCOUNTS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'LOGIN_HISTORY', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'USERS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'EMPLOYEES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'CUSTOMERS', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'LOAN_TYPES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'ACCOUNT_TYPES', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'DEPOSIT_SCHEMES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'BRANCHES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'AUDIT_LOG', ' CASCADE CONSTRAINTS PURGE');
-  drop_if_present('TABLE', 'SERVICE_REQUESTS', ' CASCADE CONSTRAINTS PURGE');
-  drop_if_present('TABLE', 'NOTIFICATIONS', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'BANK_PROFILE', ' CASCADE CONSTRAINTS PURGE');
+
   drop_if_present('SEQUENCE', 'SEQ_BUSINESS_REFERENCE');
 END;
 /
 
--- Browser FreeSQL worksheet for a complete empty-schema installation.
--- Review before running; this script does not drop objects.
+-- The section below recreates the complete schema after the cleanup above.
+-- It is self-contained for Oracle FreeSQL "Run Script" execution.
+
+
 
 -- ===== database/sql/01_create_tables.sql =====
 -- Smart Banking Management System: Oracle 19c+ core schema
@@ -422,10 +428,8 @@ CREATE INDEX idx_audit_date ON audit_log(action_date DESC);
 CREATE UNIQUE INDEX uk_users_username_lower ON users(LOWER(username));
 CREATE UNIQUE INDEX uk_users_staff_code_lower ON users(LOWER(staff_code));
 CREATE INDEX idx_users_role_active ON users(role, is_active, account_locked);
-CREATE INDEX idx_users_employee ON users(employee_id);
 CREATE INDEX idx_login_history_user_date ON login_history(user_id, occurred_at DESC);
 CREATE INDEX idx_login_history_attempt_date ON login_history(attempted_username, occurred_at DESC);
-CREATE INDEX idx_reversal_original ON transaction_reversals(original_transaction_id);
 CREATE INDEX idx_reversal_date ON transaction_reversals(reversed_at DESC);
 CREATE INDEX idx_beneficiary_customer_status ON beneficiaries(customer_id, status, updated_at DESC);
 CREATE INDEX idx_beneficiary_source ON beneficiaries(source_account_id, status);
@@ -946,7 +950,7 @@ END;
 /
 
 CREATE OR REPLACE TRIGGER trg_validate_user_staff_code
-BEFORE INSERT OR UPDATE OF employee_id, staff_code, role ON users
+BEFORE INSERT OR UPDATE OF username, customer_id, employee_id, staff_code, role ON users
 FOR EACH ROW
 DECLARE
   v_employee_code employees.employee_code%TYPE;
@@ -1004,45 +1008,81 @@ SELECT 'DPS-FLEX','Flexible Classroom DPS','DPS',1000,200000,12,60,7.75,'MONTHLY
 INSERT INTO deposit_schemes(scheme_code,scheme_name,scheme_type,minimum_amount,maximum_amount,minimum_months,maximum_months,annual_profit_rate,calculation_method,payment_frequency,tax_percentage,early_withdrawal_rate)
 SELECT 'SENIOR-SAVE','Senior Classroom Savings','SENIOR_CITIZEN',1000,2000000,3,36,7.5,'SIMPLE','AT_MATURITY',5,2 FROM dual WHERE NOT EXISTS (SELECT 1 FROM deposit_schemes WHERE scheme_code='SENIOR-SAVE');
 
-MERGE INTO employees e USING (SELECT 'A-ID-001' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='HO-001'),first_name='Mohammad',last_name='Mrinmoy',national_id='DEMO-EMP-NID-001',job_title='System Administrator',email='mohammad.mrinmoy@example.test',phone='DEMO-018-0101',salary=120000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'A-ID-001','Mohammad','Mrinmoy','DEMO-EMP-NID-001','System Administrator','mohammad.mrinmoy@example.test','DEMO-018-0101',120000 FROM branches WHERE branch_code='HO-001';
-MERGE INTO employees e USING (SELECT 'A-ID-002' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='HO-001'),first_name='Sirajum',last_name='Monira',national_id='DEMO-EMP-NID-002',job_title='System Administrator',email='sirajum.monira@example.test',phone='DEMO-018-0102',salary=118000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'A-ID-002','Sirajum','Monira','DEMO-EMP-NID-002','System Administrator','sirajum.monira@example.test','DEMO-018-0102',118000 FROM branches WHERE branch_code='HO-001';
-MERGE INTO employees e USING (SELECT 'A-ID-003' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='HO-001'),first_name='Ashik',last_name='Uz-zaman',national_id='DEMO-EMP-NID-003',job_title='System Administrator',email='ashik.uzzaman@example.test',phone='DEMO-018-0103',salary=116000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'A-ID-003','Ashik','Uz-zaman','DEMO-EMP-NID-003','System Administrator','ashik.uzzaman@example.test','DEMO-018-0103',116000 FROM branches WHERE branch_code='HO-001';
-MERGE INTO employees e USING (SELECT 'A-ID-004' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='HO-001'),first_name='Ikhteir',last_name='Asif',national_id='DEMO-EMP-NID-004',job_title='System Administrator',email='ikhteir.asif@example.test',phone='DEMO-018-0104',salary=114000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'A-ID-004','Ikhteir','Asif','DEMO-EMP-NID-004','System Administrator','ikhteir.asif@example.test','DEMO-018-0104',114000 FROM branches WHERE branch_code='HO-001';
-MERGE INTO employees e USING (SELECT 'M-ID-001' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='DHK-001'),first_name='Mayen',last_name='Majumder',national_id='DEMO-EMP-NID-005',job_title='Project Supervisor / Branch Manager',email='mayen.majumder@example.test',phone='DEMO-018-0105',salary=90000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'M-ID-001','Mayen','Majumder','DEMO-EMP-NID-005','Project Supervisor / Branch Manager','mayen.majumder@example.test','DEMO-018-0105',90000 FROM branches WHERE branch_code='DHK-001';
-MERGE INTO employees e USING (SELECT 'E-ID-001' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='DHK-001'),first_name='Mashrur',last_name='Hasan',national_id='DEMO-EMP-NID-006',job_title='Senior Banking Officer',email='mashrur.hasan@example.test',phone='DEMO-018-0106',salary=55000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-001','Mashrur','Hasan','DEMO-EMP-NID-006','Senior Banking Officer','mashrur.hasan@example.test','DEMO-018-0106',55000 FROM branches WHERE branch_code='DHK-001';
-MERGE INTO employees e USING (SELECT 'E-ID-002' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='UTT-001'),first_name='Risha',last_name='Khan',national_id='DEMO-EMP-NID-007',job_title='Customer Service Officer',email='risha.khan@example.test',phone='DEMO-018-0107',salary=52000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-002','Risha','Khan','DEMO-EMP-NID-007','Customer Service Officer','risha.khan@example.test','DEMO-018-0107',52000 FROM branches WHERE branch_code='UTT-001';
-MERGE INTO employees e USING (SELECT 'E-ID-003' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='CTG-001'),first_name='Samin',last_name='Hasan',national_id='DEMO-EMP-NID-008',job_title='Credit Officer',email='samin.hasan@example.test',phone='DEMO-018-0108',salary=56000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-003','Samin','Hasan','DEMO-EMP-NID-008','Credit Officer','samin.hasan@example.test','DEMO-018-0108',56000 FROM branches WHERE branch_code='CTG-001';
-MERGE INTO employees e USING (SELECT 'E-ID-004' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='CHP-001'),first_name='Abrar',last_name='Karib',national_id='DEMO-EMP-NID-009',job_title='Service Officer',email='abrar.karib@example.test',phone='DEMO-018-0109',salary=51000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-004','Abrar','Karib','DEMO-EMP-NID-009','Service Officer','abrar.karib@example.test','DEMO-018-0109',51000 FROM branches WHERE branch_code='CHP-001';
-MERGE INTO employees e USING (SELECT 'E-ID-005' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='DHK-001'),first_name='Rakib',last_name='Hasan',national_id='DEMO-EMP-NID-010',job_title='Operations Officer',email='rakib.hasan@example.test',phone='DEMO-018-0110',salary=53000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-005','Rakib','Hasan','DEMO-EMP-NID-010','Operations Officer','rakib.hasan@example.test','DEMO-018-0110',53000 FROM branches WHERE branch_code='DHK-001';
-MERGE INTO employees e USING (SELECT 'E-ID-006' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='UTT-001'),first_name='Prapto',last_name='Sorkar',national_id='DEMO-EMP-NID-011',job_title='Account Officer',email='prapto.sorkar@example.test',phone='DEMO-018-0111',salary=50000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-006','Prapto','Sorkar','DEMO-EMP-NID-011','Account Officer','prapto.sorkar@example.test','DEMO-018-0111',50000 FROM branches WHERE branch_code='UTT-001';
-MERGE INTO employees e USING (SELECT 'E-ID-007' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='CTG-001'),first_name='Sayba',last_name='Tasnim',national_id='DEMO-EMP-NID-012',job_title='Loan Officer',email='sayba.tasnim@example.test',phone='DEMO-018-0112',salary=54000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-007','Sayba','Tasnim','DEMO-EMP-NID-012','Loan Officer','sayba.tasnim@example.test','DEMO-018-0112',54000 FROM branches WHERE branch_code='CTG-001';
-MERGE INTO employees e USING (SELECT 'E-ID-008' employee_code FROM dual) s ON (e.employee_code=s.employee_code)
-WHEN MATCHED THEN UPDATE SET branch_id=(SELECT branch_id FROM branches WHERE branch_code='CHP-001'),first_name='Tasnia',last_name='Suborno',national_id='DEMO-EMP-NID-013',job_title='Customer Support Officer',email='tasnia.suborno@example.test',phone='DEMO-018-0113',salary=50000,status='ACTIVE'
-WHEN NOT MATCHED THEN INSERT(branch_id,employee_code,first_name,last_name,national_id,job_title,email,phone,salary) SELECT branch_id,'E-ID-008','Tasnia','Suborno','DEMO-EMP-NID-013','Customer Support Officer','tasnia.suborno@example.test','DEMO-018-0113',50000 FROM branches WHERE branch_code='CHP-001';
+MERGE INTO employees e
+USING (
+  SELECT d.employee_code,
+         d.first_name,
+         d.last_name,
+         d.national_id,
+         d.job_title,
+         d.email,
+         d.phone,
+         d.salary,
+         b.branch_id
+  FROM (
+    SELECT 'A-ID-001' employee_code, 'HO-001' branch_code, 'Mohammad' first_name, 'Mrinmoy' last_name, 'DEMO-EMP-NID-001' national_id, 'System Administrator' job_title, 'mohammad.mrinmoy@example.test' email, 'DEMO-018-0101' phone, 120000 salary FROM dual
+    UNION ALL
+    SELECT 'A-ID-002', 'HO-001', 'Sirajum', 'Monira', 'DEMO-EMP-NID-002', 'System Administrator', 'sirajum.monira@example.test', 'DEMO-018-0102', 118000 FROM dual
+    UNION ALL
+    SELECT 'A-ID-003', 'HO-001', 'Ashik', 'Uz-zaman', 'DEMO-EMP-NID-003', 'System Administrator', 'ashik.uzzaman@example.test', 'DEMO-018-0103', 116000 FROM dual
+    UNION ALL
+    SELECT 'A-ID-004', 'HO-001', 'Ikhteir', 'Asif', 'DEMO-EMP-NID-004', 'System Administrator', 'ikhteir.asif@example.test', 'DEMO-018-0104', 114000 FROM dual
+    UNION ALL
+    SELECT 'M-ID-001', 'DHK-001', 'Mayen', 'Majumder', 'DEMO-EMP-NID-005', 'Project Supervisor / Branch Manager', 'mayen.majumder@example.test', 'DEMO-018-0105', 90000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-001', 'DHK-001', 'Mashrur', 'Hasan', 'DEMO-EMP-NID-006', 'Senior Banking Officer', 'mashrur.hasan@example.test', 'DEMO-018-0106', 55000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-002', 'UTT-001', 'Risha', 'Khan', 'DEMO-EMP-NID-007', 'Customer Service Officer', 'risha.khan@example.test', 'DEMO-018-0107', 52000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-003', 'CTG-001', 'Samin', 'Hasan', 'DEMO-EMP-NID-008', 'Credit Officer', 'samin.hasan@example.test', 'DEMO-018-0108', 56000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-004', 'CHP-001', 'Abrar', 'Karib', 'DEMO-EMP-NID-009', 'Service Officer', 'abrar.karib@example.test', 'DEMO-018-0109', 51000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-005', 'DHK-001', 'Rakib', 'Hasan', 'DEMO-EMP-NID-010', 'Operations Officer', 'rakib.hasan@example.test', 'DEMO-018-0110', 53000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-006', 'UTT-001', 'Prapto', 'Sorkar', 'DEMO-EMP-NID-011', 'Account Officer', 'prapto.sorkar@example.test', 'DEMO-018-0111', 50000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-007', 'CTG-001', 'Sayba', 'Tasnim', 'DEMO-EMP-NID-012', 'Loan Officer', 'sayba.tasnim@example.test', 'DEMO-018-0112', 54000 FROM dual
+    UNION ALL
+    SELECT 'E-ID-008', 'CHP-001', 'Tasnia', 'Suborno', 'DEMO-EMP-NID-013', 'Customer Support Officer', 'tasnia.suborno@example.test', 'DEMO-018-0113', 50000 FROM dual
+  ) d
+  JOIN branches b
+    ON b.branch_code = d.branch_code
+) s
+ON (e.employee_code = s.employee_code)
+WHEN MATCHED THEN UPDATE SET
+  branch_id   = s.branch_id,
+  first_name  = s.first_name,
+  last_name   = s.last_name,
+  national_id = s.national_id,
+  job_title   = s.job_title,
+  email       = s.email,
+  phone       = s.phone,
+  salary      = s.salary,
+  status      = 'ACTIVE'
+WHEN NOT MATCHED THEN INSERT (
+  branch_id,
+  employee_code,
+  first_name,
+  last_name,
+  national_id,
+  job_title,
+  email,
+  phone,
+  salary,
+  status
+) VALUES (
+  s.branch_id,
+  s.employee_code,
+  s.first_name,
+  s.last_name,
+  s.national_id,
+  s.job_title,
+  s.email,
+  s.phone,
+  s.salary,
+  'ACTIVE'
+);
 
 DECLARE
   TYPE t_name_list IS TABLE OF VARCHAR2(80); names t_name_list := t_name_list('Nusrat Jahan','Shamim Hasan','Geko Topadar','Chypher Hasan','Ryna Jahan','Jet Bagom','Chember Rahman','Astra Tabbassum','Raze Akter','Skye Tasnim','Clove Hasan','Tasfia Neon','Abul Phenix','Sage Mostofa','Mohammad Yoru','Jahanggir Harbor','Alongir Tejo','Luna Kabir','Orion Sultana','Nova Rahman','Farhan Noor','Meher Afroz','Tanim Chowdhury','Priya Saha','Zayan Ahmed');
@@ -1075,12 +1115,56 @@ BEGIN
 END;
 /
 
-DECLARE v_number VARCHAR2(24); v_type NUMBER; v_branch NUMBER;
+DECLARE
+  v_number VARCHAR2(24);
+  v_type NUMBER;
+  v_branch NUMBER;
+  v_existing NUMBER;
 BEGIN
-  SELECT account_type_id INTO v_type FROM account_types WHERE type_name='Current';
-  FOR c IN (SELECT customer_id,ROW_NUMBER() OVER (ORDER BY customer_id) rn FROM customers WHERE national_id LIKE 'DEMO-NID-%') LOOP
-    SELECT branch_id INTO v_branch FROM accounts WHERE customer_id=c.customer_id AND ROWNUM=1;
-    pkg_banking_operations.open_account(c.customer_id,v_branch,v_type,5000,NULL,v_number);
+  SELECT account_type_id
+    INTO v_type
+    FROM account_types
+   WHERE type_name = 'Current'
+     AND status = 'ACTIVE';
+
+  FOR c IN (
+    SELECT customer_id
+    FROM (
+      SELECT customer_id,
+             ROW_NUMBER() OVER (ORDER BY customer_id) rn
+      FROM customers
+      WHERE national_id LIKE 'DEMO-NID-%'
+    )
+    WHERE rn <= 5
+  ) LOOP
+    SELECT COUNT(*)
+      INTO v_existing
+      FROM accounts
+     WHERE customer_id = c.customer_id
+       AND account_type_id = v_type;
+
+    IF v_existing = 0 THEN
+      SELECT MIN(branch_id) KEEP (DENSE_RANK FIRST ORDER BY account_id)
+        INTO v_branch
+        FROM accounts
+       WHERE customer_id = c.customer_id;
+
+      IF v_branch IS NULL THEN
+        RAISE_APPLICATION_ERROR(
+          -20401,
+          'Cannot create Current account because the demo customer has no base account.'
+        );
+      END IF;
+
+      pkg_banking_operations.open_account(
+        c.customer_id,
+        v_branch,
+        v_type,
+        5000,
+        NULL,
+        v_number
+      );
+    END IF;
   END LOOP;
 END;
 /
@@ -1105,21 +1189,156 @@ BEGIN
 END;
 /
 
-DECLARE v_number VARCHAR2(40); v_type NUMBER; v_emp NUMBER; v_count NUMBER := 0;
+DECLARE
+  v_number VARCHAR2(100);
+  v_type NUMBER;
+  v_emp NUMBER;
+  v_type_count NUMBER;
+  v_min_amount NUMBER;
+  v_max_amount NUMBER;
+  v_min_term NUMBER;
+  v_max_term NUMBER;
+  v_amount NUMBER;
+  v_term NUMBER;
 BEGIN
-  SELECT employee_id INTO v_emp FROM employees WHERE employee_code='M-ID-001';
-  FOR a IN (SELECT account_id,customer_id,account_number,ROW_NUMBER() OVER (ORDER BY account_id) rn FROM accounts WHERE ROWNUM <= 10) LOOP
-    SELECT loan_type_id INTO v_type FROM (SELECT loan_type_id,ROW_NUMBER() OVER (ORDER BY loan_type_id) rn FROM loan_types WHERE status='ACTIVE') WHERE rn=1+MOD(a.rn-1,6);
-    pkg_loan_operations.apply_for_loan(a.customer_id,v_type,a.account_id,50000+MOD(a.rn,5)*10000,12,v_number);
+  SELECT MIN(employee_id)
+    INTO v_emp
+    FROM employees
+   WHERE employee_code = 'M-ID-001'
+     AND status = 'ACTIVE';
+
+  IF v_emp IS NULL THEN
+    RAISE_APPLICATION_ERROR(
+      -20402,
+      'Active demo Manager M-ID-001 is missing before loan generation.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_type_count
+    FROM loan_types
+   WHERE status = 'ACTIVE';
+
+  IF v_type_count = 0 THEN
+    RAISE_APPLICATION_ERROR(-20403, 'No active loan type is available.');
+  END IF;
+
+  FOR a IN (
+    SELECT customer_id, account_id, rn
+    FROM (
+      SELECT x.customer_id,
+             x.account_id,
+             ROW_NUMBER() OVER (ORDER BY x.customer_id) rn
+      FROM (
+        SELECT a.customer_id,
+               MIN(a.account_id) account_id
+        FROM accounts a
+        JOIN customers c
+          ON c.customer_id = a.customer_id
+        WHERE c.national_id LIKE 'DEMO-NID-%'
+        GROUP BY a.customer_id
+      ) x
+    )
+    WHERE rn <= 10
+  ) LOOP
+    SELECT loan_type_id,
+           min_amount,
+           max_amount,
+           min_term_months,
+           max_term_months
+      INTO v_type,
+           v_min_amount,
+           v_max_amount,
+           v_min_term,
+           v_max_term
+      FROM (
+        SELECT lt.loan_type_id,
+               lt.min_amount,
+               lt.max_amount,
+               lt.min_term_months,
+               lt.max_term_months,
+               ROW_NUMBER() OVER (ORDER BY lt.type_name) rn
+        FROM loan_types lt
+        WHERE lt.status = 'ACTIVE'
+      )
+     WHERE rn = 1 + MOD(a.rn - 1, v_type_count);
+
+    v_amount := LEAST(
+      v_max_amount,
+      v_min_amount + (MOD(a.rn - 1, 4) * 25000)
+    );
+    v_term := LEAST(
+      v_max_term,
+      GREATEST(v_min_term, 12 + (MOD(a.rn - 1, 3) * 6))
+    );
+
+    pkg_loan_operations.apply_for_loan(
+      a.customer_id,
+      v_type,
+      a.account_id,
+      v_amount,
+      v_term,
+      v_number
+    );
   END LOOP;
-  FOR l IN (SELECT loan_id,requested_amount FROM (SELECT loan_id,requested_amount,ROW_NUMBER() OVER (ORDER BY loan_id) rn FROM loans WHERE status='PENDING') WHERE rn <= 4) LOOP
-    pkg_loan_operations.approve_loan(l.loan_id,l.requested_amount,v_emp,NULL,v_number);
+
+  FOR l IN (
+    SELECT loan_id, requested_amount
+    FROM (
+      SELECT loan_id,
+             requested_amount,
+             ROW_NUMBER() OVER (ORDER BY loan_id) rn
+      FROM loans
+      WHERE status = 'PENDING'
+    )
+    WHERE rn <= 4
+  ) LOOP
+    pkg_loan_operations.approve_loan(
+      l.loan_id,
+      l.requested_amount,
+      v_emp,
+      NULL,
+      v_number
+    );
   END LOOP;
-  FOR l IN (SELECT loan_id FROM (SELECT loan_id,ROW_NUMBER() OVER (ORDER BY loan_id) rn FROM loans WHERE status='PENDING') WHERE rn <= 2) LOOP
-    pkg_loan_operations.reject_loan(l.loan_id,'Demo affordability review',v_emp);
+
+  FOR l IN (
+    SELECT loan_id
+    FROM (
+      SELECT loan_id,
+             ROW_NUMBER() OVER (ORDER BY loan_id) rn
+      FROM loans
+      WHERE status = 'PENDING'
+    )
+    WHERE rn <= 2
+  ) LOOP
+    pkg_loan_operations.reject_loan(
+      l.loan_id,
+      'Demo affordability review',
+      v_emp
+    );
   END LOOP;
-  FOR l IN (SELECT loan_id,account_number FROM (SELECT l.loan_id,a.account_number,ROW_NUMBER() OVER (ORDER BY l.loan_id) rn FROM loans l JOIN accounts a ON a.account_id=l.disbursement_account_id WHERE l.status='ACTIVE') WHERE rn <= 2) LOOP
-    pkg_loan_operations.record_payment(l.loan_id,l.account_number,1000,NULL,v_number);
+
+  FOR l IN (
+    SELECT loan_id, account_number
+    FROM (
+      SELECT l.loan_id,
+             a.account_number,
+             ROW_NUMBER() OVER (ORDER BY l.loan_id) rn
+      FROM loans l
+      JOIN accounts a
+        ON a.account_id = l.disbursement_account_id
+      WHERE l.status = 'ACTIVE'
+    )
+    WHERE rn <= 2
+  ) LOOP
+    pkg_loan_operations.record_payment(
+      l.loan_id,
+      l.account_number,
+      1000,
+      NULL,
+      v_number
+    );
   END LOOP;
 END;
 /
@@ -1127,11 +1346,113 @@ END;
 INSERT INTO beneficiaries(customer_id,source_account_id,beneficiary_account_id,nickname)
 SELECT a.customer_id,a.account_id,b.account_id,'Demo beneficiary '||a.customer_id FROM accounts a JOIN accounts b ON b.account_id=a.account_id+1 WHERE a.customer_id IN (SELECT customer_id FROM customers WHERE national_id LIKE 'DEMO-NID-%') AND a.account_id<>b.account_id AND NOT EXISTS (SELECT 1 FROM beneficiaries x WHERE x.customer_id=a.customer_id AND x.source_account_id=a.account_id AND x.beneficiary_account_id=b.account_id);
 
-INSERT INTO deposit_certificates(certificate_number,customer_id,account_id,scheme_id,principal_amount,annual_profit_rate,duration_months,calculation_method,tax_percentage,expected_gross_profit,expected_tax,expected_net_profit,expected_maturity_amount,opening_date,maturity_date,status)
-SELECT 'DEMO-QUOTE-'||LPAD(c.customer_id,6,'0'),c.customer_id,a.account_id,s.scheme_id,25000,s.annual_profit_rate,12,s.calculation_method,s.tax_percentage,ROUND(25000*s.annual_profit_rate/100,2),ROUND(25000*s.annual_profit_rate/100*s.tax_percentage/100,2),ROUND(25000*s.annual_profit_rate/100*(1-s.tax_percentage/100),2),ROUND(25000+25000*s.annual_profit_rate/100*(1-s.tax_percentage/100),2),TRUNC(SYSDATE),ADD_MONTHS(TRUNC(SYSDATE),12),'QUOTATION' FROM customers c JOIN accounts a ON a.customer_id=c.customer_id CROSS JOIN (SELECT * FROM deposit_schemes WHERE scheme_code='FD-SIMPLE') s WHERE c.national_id LIKE 'DEMO-NID-%' AND ROWNUM <= 8 AND NOT EXISTS (SELECT 1 FROM deposit_certificates d WHERE d.certificate_number='DEMO-QUOTE-'||LPAD(c.customer_id,6,'0'));
+INSERT INTO deposit_certificates(
+  certificate_number,
+  customer_id,
+  account_id,
+  scheme_id,
+  principal_amount,
+  annual_profit_rate,
+  duration_months,
+  calculation_method,
+  tax_percentage,
+  expected_gross_profit,
+  expected_tax,
+  expected_net_profit,
+  expected_maturity_amount,
+  opening_date,
+  maturity_date,
+  status
+)
+SELECT 'DEMO-QUOTE-' || LPAD(q.customer_id, 6, '0'),
+       q.customer_id,
+       q.account_id,
+       s.scheme_id,
+       25000,
+       s.annual_profit_rate,
+       12,
+       s.calculation_method,
+       s.tax_percentage,
+       ROUND(25000 * s.annual_profit_rate / 100, 2),
+       ROUND(25000 * s.annual_profit_rate / 100 * s.tax_percentage / 100, 2),
+       ROUND(25000 * s.annual_profit_rate / 100 * (1 - s.tax_percentage / 100), 2),
+       ROUND(25000 + 25000 * s.annual_profit_rate / 100 * (1 - s.tax_percentage / 100), 2),
+       TRUNC(SYSDATE),
+       ADD_MONTHS(TRUNC(SYSDATE), 12),
+       'QUOTATION'
+FROM (
+  SELECT x.customer_id,
+         x.account_id,
+         ROW_NUMBER() OVER (ORDER BY x.customer_id) rn
+  FROM (
+    SELECT c.customer_id,
+           MIN(a.account_id) account_id
+    FROM customers c
+    JOIN accounts a
+      ON a.customer_id = c.customer_id
+    WHERE c.national_id LIKE 'DEMO-NID-%'
+    GROUP BY c.customer_id
+  ) x
+) q
+CROSS JOIN (
+  SELECT scheme_id,
+         annual_profit_rate,
+         calculation_method,
+         tax_percentage
+  FROM deposit_schemes
+  WHERE scheme_code = 'FD-SIMPLE'
+) s
+WHERE q.rn <= 8
+  AND NOT EXISTS (
+    SELECT 1
+    FROM deposit_certificates d
+    WHERE d.certificate_number =
+          'DEMO-QUOTE-' || LPAD(q.customer_id, 6, '0')
+  );
 
-INSERT INTO service_requests(request_number,customer_id,branch_id,request_type,subject,description)
-SELECT 'DEMO-SR-'||LPAD(c.customer_id,6,'0'),c.customer_id,a.branch_id,CASE MOD(c.customer_id,6) WHEN 0 THEN 'ACCOUNT_FREEZE' WHEN 1 THEN 'STATEMENT' WHEN 2 THEN 'PROFILE_HELP' WHEN 3 THEN 'BENEFICIARY_HELP' WHEN 4 THEN 'LOAN_INFORMATION' ELSE 'GENERAL_SUPPORT' END,'Demo service request','Fictional university demonstration request.' FROM customers c JOIN accounts a ON a.customer_id=c.customer_id WHERE c.national_id LIKE 'DEMO-NID-%' AND ROWNUM <= 10 AND NOT EXISTS (SELECT 1 FROM service_requests r WHERE r.request_number='DEMO-SR-'||LPAD(c.customer_id,6,'0'));
+INSERT INTO service_requests(
+  request_number,
+  customer_id,
+  branch_id,
+  request_type,
+  subject,
+  description
+)
+SELECT 'DEMO-SR-' || LPAD(q.customer_id, 6, '0'),
+       q.customer_id,
+       q.branch_id,
+       CASE MOD(q.rn, 6)
+         WHEN 0 THEN 'ACCOUNT_FREEZE'
+         WHEN 1 THEN 'STATEMENT'
+         WHEN 2 THEN 'PROFILE_HELP'
+         WHEN 3 THEN 'BENEFICIARY_HELP'
+         WHEN 4 THEN 'LOAN_INFORMATION'
+         ELSE 'GENERAL_SUPPORT'
+       END,
+       'Demo service request',
+       'Fictional university demonstration request.'
+FROM (
+  SELECT x.customer_id,
+         x.branch_id,
+         ROW_NUMBER() OVER (ORDER BY x.customer_id) rn
+  FROM (
+    SELECT c.customer_id,
+           MIN(a.branch_id) KEEP (DENSE_RANK FIRST ORDER BY a.account_id) branch_id
+    FROM customers c
+    JOIN accounts a
+      ON a.customer_id = c.customer_id
+    WHERE c.national_id LIKE 'DEMO-NID-%'
+    GROUP BY c.customer_id
+  ) x
+) q
+WHERE q.rn <= 10
+  AND NOT EXISTS (
+    SELECT 1
+    FROM service_requests r
+    WHERE r.request_number =
+          'DEMO-SR-' || LPAD(q.customer_id, 6, '0')
+  );
+
 INSERT INTO audit_log(table_name,record_id,action_name,action_by,new_summary)
 SELECT 'DEMO_DATA',c.customer_id,'VIVA_SEED','SYSTEM','Fictional university demonstration data'
 FROM customers c
@@ -1143,3 +1464,121 @@ WHERE c.national_id LIKE 'DEMO-NID-%'
       AND a.action_name='VIVA_SEED'
   );
 COMMIT;
+
+-- Final fail-fast validation. Any red error below means the reset is incomplete.
+DECLARE
+  v_count NUMBER;
+BEGIN
+  SELECT COUNT(*)
+    INTO v_count
+    FROM user_tab_columns
+   WHERE table_name = 'USERS'
+     AND column_name IN ('STAFF_CODE', 'DISPLAY_NAME');
+
+  IF v_count <> 2 THEN
+    RAISE_APPLICATION_ERROR(
+      -20410,
+      'USERS.STAFF_CODE or USERS.DISPLAY_NAME is missing.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM user_objects
+   WHERE status <> 'VALID';
+
+  IF v_count <> 0 THEN
+    RAISE_APPLICATION_ERROR(
+      -20411,
+      'One or more database objects are INVALID. Query USER_OBJECTS and USER_ERRORS.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM user_errors;
+
+  IF v_count <> 0 THEN
+    RAISE_APPLICATION_ERROR(
+      -20412,
+      'Compilation errors remain in USER_ERRORS.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM employees
+   WHERE employee_code IN (
+     'A-ID-001','A-ID-002','A-ID-003','A-ID-004',
+     'M-ID-001',
+     'E-ID-001','E-ID-002','E-ID-003','E-ID-004',
+     'E-ID-005','E-ID-006','E-ID-007','E-ID-008'
+   );
+
+  IF v_count <> 13 THEN
+    RAISE_APPLICATION_ERROR(
+      -20413,
+      'Expected 13 demo staff employees, found ' || v_count || '.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM customers
+   WHERE national_id LIKE 'DEMO-NID-%';
+
+  IF v_count <> 25 THEN
+    RAISE_APPLICATION_ERROR(
+      -20414,
+      'Expected 25 demo customers, found ' || v_count || '.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM accounts;
+
+  IF v_count < 30 THEN
+    RAISE_APPLICATION_ERROR(
+      -20415,
+      'Expected at least 30 demo accounts, found ' || v_count || '.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM transactions;
+
+  IF v_count < 70 THEN
+    RAISE_APPLICATION_ERROR(
+      -20416,
+      'Expected at least 70 demo transactions, found ' || v_count || '.'
+    );
+  END IF;
+
+  SELECT COUNT(*)
+    INTO v_count
+    FROM loans;
+
+  IF v_count < 10 THEN
+    RAISE_APPLICATION_ERROR(
+      -20417,
+      'Expected at least 10 demo loans, found ' || v_count || '.'
+    );
+  END IF;
+
+  DBMS_OUTPUT.PUT_LINE('FULL RESET VALIDATION PASSED');
+END;
+/
+
+SELECT 'FULL_RESET_COMPLETE' installation_status,
+       (SELECT COUNT(*) FROM branches) branch_count,
+       (SELECT COUNT(*) FROM employees) employee_count,
+       (SELECT COUNT(*) FROM customers) customer_count,
+       (SELECT COUNT(*) FROM accounts) account_count,
+       (SELECT COUNT(*) FROM transactions) transaction_count,
+       (SELECT COUNT(*) FROM loans) loan_count,
+       (SELECT COUNT(*) FROM deposit_certificates) quotation_count,
+       (SELECT COUNT(*) FROM service_requests) service_request_count
+FROM dual;
+
