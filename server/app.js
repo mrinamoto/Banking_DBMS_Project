@@ -12,6 +12,7 @@ const { notFound, errorHandler } = require("./middleware/errors");
 const { getConnection } = require("./config/db");
 const notificationRoutes = require("./routes/notificationRoutes");
 const serviceRequestRoutes = require("./routes/serviceRequestRoutes");
+const bankProfileRoutes = require("./routes/bankProfileRoutes");
 
 function createApp() {
   const app = express();
@@ -33,6 +34,7 @@ function createApp() {
     }
   });
   app.use("/api/auth", authRoutes);
+  app.use("/api/bank-profile", bankProfileRoutes);
   app.use("/api/staff", staffRoutes);
   app.use("/api/explorer", explorerRoutes);
   app.use("/api", customerToolsRoutes);

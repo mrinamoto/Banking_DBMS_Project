@@ -3,12 +3,12 @@ SET DEFINE OFF
 @@sql/01_create_tables.sql
 @@sql/02_constraints.sql
 @@sql/05_indexes.sql
+@@sql/03_insert_sample_data.sql
+@@sql/04_views.sql
 @@sql/07_functions.sql
 @@sql/11_packages.sql
 @@sql/08_procedures.sql
-@@sql/04_views.sql
 @@sql/10_triggers.sql
-@@sql/03_insert_sample_data.sql
 @@sql/12_viva_demo_data.sql
 PROMPT Smart Banking schema installed. Review USER_ERRORS before granting privileges.
 SELECT name,

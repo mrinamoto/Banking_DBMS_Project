@@ -25,6 +25,7 @@ DECLARE
   END drop_if_present;
 BEGIN
   -- Standalone objects and packages are removed before their dependent tables.
+  drop_if_present('TABLE', 'BANK_PROFILE', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('VIEW', 'VW_PENDING_LOAN_APPLICATIONS');
   drop_if_present('VIEW', 'VW_DAILY_TRANSACTION_TOTALS');
   drop_if_present('VIEW', 'VW_LOAN_SUMMARY');

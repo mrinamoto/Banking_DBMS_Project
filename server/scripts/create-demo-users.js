@@ -36,18 +36,19 @@ async function main() {
     const passwordHash = await hashPassword(password);
     const people = await connection.execute(
       `SELECT
-         (SELECT customer_id FROM customers WHERE national_id='NID-DEMO-001') customer_one,
+         (SELECT customer_id FROM customers WHERE national_id='DEMO-NID-0001') customer_one,
+         (SELECT employee_id FROM employees WHERE employee_code='A-ID-001') admin_one,
          (SELECT employee_id FROM employees WHERE employee_code='M-ID-001') manager_one,
          (SELECT employee_id FROM employees WHERE employee_code='E-ID-001') employee_one
        FROM dual`
     );
     const row = people.rows[0];
-    await upsertUser(connection, { username: "admin", passwordHash, role: "ADMIN", customerId: null, employeeId: null, staffCode: "A-ID-001" });
+    await upsertUser(connection, { username: "admin.mrinmoy001", passwordHash, role: "ADMIN", customerId: null, employeeId: row.ADMIN_ONE, staffCode: "A-ID-001" });
     await upsertUser(connection, { username: "manager", passwordHash, role: "MANAGER", customerId: null, employeeId: row.MANAGER_ONE, staffCode: "M-ID-001" });
     await upsertUser(connection, { username: "employee", passwordHash, role: "EMPLOYEE", customerId: null, employeeId: row.EMPLOYEE_ONE, staffCode: "E-ID-001" });
-    await upsertUser(connection, { username: "customer", passwordHash, role: "CUSTOMER", customerId: row.CUSTOMER_ONE, employeeId: null, staffCode: null });
+    await upsertUser(connection, { username: "customer001", passwordHash, role: "CUSTOMER", customerId: row.CUSTOMER_ONE, employeeId: null, staffCode: null });
     await connection.commit();
-    console.log("Demo users ready: admin, manager, employee, customer");
+    console.log("Demo users ready: admin.mrinmoy001, mayen.majumder001, mashrur.hasan001, customer001");
   } catch (error) {
     await connection.rollback();
     throw error;

@@ -7,6 +7,8 @@
     "server:start": "npm --prefix server start",
     "db:test": "npm --prefix server run db:test",
     "db:doctor": "npm --prefix server run db:doctor",
+    "db:build-worksheets": "node scripts/build-worksheets.js",
+    "db:check-worksheets": "node scripts/build-worksheets.js --check",
     "server:check": "npm --prefix server run check",
     "server:test": "npm --prefix server test"
   },

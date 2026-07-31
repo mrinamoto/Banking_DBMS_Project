@@ -4,13 +4,13 @@ const { hashPassword } = require("../utils/passwords");
 const { requireFields, pageOptions, withConnection } = require("../utils/http");
 const { assertBranchId, setClientIdentifier } = require("../utils/authorization");
 
-const staffRoles = new Set(["MANAGER", "EMPLOYEE"]);
+const staffRoles = new Set(["ADMIN", "MANAGER", "EMPLOYEE"]);
 
 function badRequest(message) { const error = new Error(message); error.status = 400; return error; }
 function notFound(message) { const error = new Error(message); error.status = 404; return error; }
 function normalizeUsername(value) { return String(value || "").trim().toLowerCase(); }
 function assertStaffRole(actor, role) {
-  if (!staffRoles.has(role)) throw badRequest("Staff login role must be MANAGER or EMPLOYEE.");
+  if (!staffRoles.has(role)) throw badRequest("Staff login role must be Admin, Manager, or Employee.");
   if (actor.role === "MANAGER" && role !== "EMPLOYEE") throw Object.assign(new Error("Managers may create only Employee logins."), { status: 403 });
   if (actor.role !== "ADMIN" && actor.role !== "MANAGER") throw Object.assign(new Error("You cannot manage staff logins."), { status: 403 });
 }

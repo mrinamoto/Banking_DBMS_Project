@@ -21,6 +21,7 @@ import Notifications from "./pages/Notifications";
 import ServiceRequests from "./pages/ServiceRequests";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { BankProfileProvider } from "./context/BankProfileContext.jsx";
 
 function Protected() {
   const { user, authLoading } = useAuth();
@@ -61,11 +62,13 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<AnimatedAuth />} />
-          <Route path="/register" element={<AnimatedAuth initialMode="signup" />} />
-          <Route path="/*" element={<Protected />} />
-        </Routes>
+        <BankProfileProvider>
+          <Routes>
+            <Route path="/login" element={<AnimatedAuth />} />
+            <Route path="/register" element={<AnimatedAuth initialMode="signup" />} />
+            <Route path="/*" element={<Protected />} />
+          </Routes>
+        </BankProfileProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -16,6 +16,9 @@ function profileFromRow(user) {
     customerId: user.CUSTOMER_ID,
     employeeId: user.EMPLOYEE_ID,
     branchId: user.BRANCH_ID,
+    employeeCode: user.EMPLOYEE_CODE || null,
+    jobTitle: user.JOB_TITLE || null,
+    branchName: user.BRANCH_NAME || null,
     staffCode: user.STAFF_CODE || user.EMPLOYEE_CODE || null,
     displayName: user.DISPLAY_NAME || user.EMPLOYEE_NAME || user.CUSTOMER_NAME || (user.ROLE === "ADMIN" ? "System Administrator" : user.USERNAME),
     mustChangePassword: user.MUST_CHANGE_PASSWORD === "Y",
@@ -29,9 +32,11 @@ async function login(req, res, next) {
       const result = await connection.execute(
         `SELECT u.user_id, u.username, u.staff_code, u.display_name, u.password_hash, u.role, u.is_active,
                 u.account_locked, u.must_change_password, u.customer_id, u.employee_id, e.branch_id,
-                e.employee_code, e.first_name||' '||e.last_name employee_name,
+                e.employee_code, e.job_title, b.branch_name,
+                e.first_name||' '||e.last_name employee_name,
                 c.first_name||' '||c.last_name customer_name
            FROM users u LEFT JOIN employees e ON e.employee_id = u.employee_id
+           LEFT JOIN branches b ON b.branch_id = e.branch_id
            LEFT JOIN customers c ON c.customer_id = u.customer_id
           WHERE LOWER(u.username) = LOWER(:username)
              OR LOWER(u.staff_code) = LOWER(:username)`,
@@ -183,13 +188,16 @@ async function register(req, res, next) {
 
     await connection.commit();
 
-    const profile = {
+  const profile = {
       id: userResult.outBinds.userId[0],
       username,
       role: "CUSTOMER",
       customerId,
       employeeId: null,
       branchId: null,
+      employeeCode: null,
+      jobTitle: null,
+      branchName: null,
     };
     res.status(201).json({ token: signToken(profile), user: profile, message: "Customer account created." });
   } catch (error) {

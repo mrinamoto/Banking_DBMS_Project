@@ -84,7 +84,7 @@ Open `http://localhost:5173/login`; verify the backend at `http://localhost:5000
 
 ## Oracle setup and repair
 
-Use a dedicated classroom schema. After confirming the schema is empty or safe to initialize, connect as the application user and run `@database/run_all.sql`. This installer does not run the destructive `database/sql/00_drop_objects.sql`. Then inspect invalid objects and errors:
+Use a dedicated classroom schema. Browser FreeSQL and Node SQL*Net are separate connection paths; copy the current Schema Connection Details into `server/.env` and never commit it. For browser execution, regenerate self-contained worksheets with `npm run db:build-worksheets` and use Run Script. `database/run_all.sql` remains a non-destructive SQL*Plus installer and does not run the destructive drop script. Then inspect invalid objects and errors:
 
 ```sql
 SELECT object_type, status, COUNT(*)
@@ -97,12 +97,7 @@ FROM user_errors
 ORDER BY name, sequence;
 ```
 
-For an existing schema, run the non-destructive Phase 1 upgrade `@database/migrations/001_staff_users_explorer_dashboard.sql` (or paste `database/worksheet/phase1_upgrade.sql`), then run the read-only checks with `@database/tests/phase1_tests.sql`. Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Seed university demonstration identities with `npm --prefix server run seed:viva-users -- --base-secret "<local-secret-at-least-16-chars>"` (add `--include-customer` for the optional customer). Temporary passwords are printed only to the invoking terminal and require first-login change. Remove or deactivate them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
-
-For Phase 2 on an existing schema, run `@database/migrations/002_reversal_statement_customer_tools.sql` (or paste `database/worksheet/phase2_upgrade.sql`), then `@database/tests/phase2_tests.sql`. Reversal is intentionally limited to successful `DEPOSIT` and `WITHDRAWAL` rows; transfers and loan payments are unsupported.
-
-For Phase 3 on an existing schema, run the non-destructive `@database/migrations/003_deposit_profit_suite.sql`, then the read-only `@database/tests/phase3_tests.sql`. The pasteable `database/worksheet/full_upgrade.sql` contains the Phase 1–3 upgrade without `@` dependencies. For an empty classroom schema use `database/worksheet/full_fresh_install.sql`; `full_reset_and_install.sql` is destructive and development-only. `database/worksheet/verify_install.sql` is read-only. Deposit quotations never activate a deposit, debit an account, or post a ledger transaction. The calculator is an educational estimate; tax and early-withdrawal values are not banking advice.
-For the Phase 2 viva data and service modules, use the updated `database/worksheet/full_upgrade.sql` or `database/worksheet/full_fresh_install.sql`, then run `database/tests/viva_smoke_tests.sql`. The data script creates fictional customers, staff master records, package-controlled financial activity, loan products, quotations, notifications, and service requests; it never stores passwords.
+For an existing schema, run the non-destructive `database/worksheet/full_upgrade.sql`; it applies migrations 001–006, including the unified staff principal rule, without dropping financial history. For a disposable schema use `database/worksheet/full_reset_and_install.sql`; it recreates the final source and fictional demo data. Do not run a reset automatically or run full upgrade after a successful reset. The data script creates no passwords. Seed university demonstration identities only at runtime with `npm --prefix server run seed:viva-users -- --base-secret "<local-secret-at-least-16-chars>"` (add `--include-customer` only when needed). Temporary passwords are printed once to the invoking terminal. See `database/README.md` and `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
 
 ### Exact FreeSQL release sequence
 
