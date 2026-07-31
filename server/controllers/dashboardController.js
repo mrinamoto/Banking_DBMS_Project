@@ -8,7 +8,7 @@ async function getDashboardStats(req, res, next) {
       const branchId = ["MANAGER", "EMPLOYEE"].includes(role) ? req.user.branchId : null;
       const customerId = role === "CUSTOMER" ? req.user.customerId : null;
       const scope = { branchId, customerId };
-      const [branch, customers, accounts, employees, loans, transactions, volume, frozen, recent, audit] = await Promise.all([
+      const [branch, customers, accounts, employees, loans, transactions, volume, frozen, recent, audit, kyc] = await Promise.all([
         connection.execute("SELECT branch_name FROM branches WHERE branch_id=:branchId", { branchId }),
         connection.execute("SELECT COUNT(*) count FROM customers c WHERE (:customerId IS NULL OR c.customer_id=:customerId) AND (:branchId IS NULL OR EXISTS (SELECT 1 FROM accounts a WHERE a.customer_id=c.customer_id AND a.branch_id=:branchId))", scope),
         connection.execute("SELECT COUNT(*) count,NVL(SUM(a.balance),0) total_balance FROM accounts a WHERE (:customerId IS NULL OR a.customer_id=:customerId) AND (:branchId IS NULL OR a.branch_id=:branchId)", scope),
@@ -18,13 +18,14 @@ async function getDashboardStats(req, res, next) {
         connection.execute("SELECT NVL(SUM(CASE WHEN t.transaction_type='TRANSFER_CREDIT' THEN 0 ELSE t.amount END),0) volume FROM transactions t JOIN accounts a ON a.account_id=t.account_id WHERE (:customerId IS NULL OR a.customer_id=:customerId) AND (:branchId IS NULL OR a.branch_id=:branchId)", scope),
         connection.execute("SELECT COUNT(*) count FROM accounts a WHERE a.status='FROZEN' AND (:customerId IS NULL OR a.customer_id=:customerId) AND (:branchId IS NULL OR a.branch_id=:branchId)", scope),
         connection.execute("SELECT t.reference_no,t.transaction_type,t.amount,t.transaction_date FROM transactions t JOIN accounts a ON a.account_id=t.account_id WHERE (:customerId IS NULL OR a.customer_id=:customerId) AND (:branchId IS NULL OR a.branch_id=:branchId) ORDER BY t.transaction_date DESC FETCH FIRST 8 ROWS ONLY", scope),
-        connection.execute("SELECT audit_id,table_name,action_name,action_by,action_date FROM audit_log WHERE (:branchId IS NULL OR action_by=:actor) ORDER BY action_date DESC FETCH FIRST 6 ROWS ONLY", { branchId, actor: req.user.username })
+        connection.execute("SELECT audit_id,table_name,action_name,action_by,action_date FROM audit_log WHERE (:branchId IS NULL OR action_by=:actor) ORDER BY action_date DESC FETCH FIRST 6 ROWS ONLY", { branchId, actor: req.user.username }),
+        connection.execute("SELECT COUNT(*) count FROM customer_kyc k JOIN customers c ON c.customer_id=k.customer_id WHERE (:customerId IS NULL OR k.customer_id=:customerId) AND (:branchId IS NULL OR EXISTS (SELECT 1 FROM accounts a WHERE a.customer_id=c.customer_id AND a.branch_id=:branchId)) AND k.status='PENDING'", scope)
       ]);
       const totalCustomers = Number(customers.rows[0].COUNT || 0);
       const totalAccounts = Number(accounts.rows[0].COUNT || 0);
       const totalEmployees = Number(employees.rows[0].COUNT || 0);
       const pendingLoans = Number(loans.rows[0].COUNT || 0);
-      res.json({ role, branchName: branch.rows[0]?.BRANCH_NAME || null, totalCustomers, totalAccounts, totalEmployees, totalLoans: pendingLoans, pendingLoans, totalBalance: accounts.rows[0].TOTAL_BALANCE, todayTransactions: Number(transactions.rows[0].COUNT || 0), transactionVolume: volume.rows[0].VOLUME, frozenAccounts: Number(frozen.rows[0].COUNT || 0), recentTransactions: recent.rows, recentAudit: audit.rows, quickLinks: role === "ADMIN" ? ["/user-management", "/database-explorer"] : role === "EMPLOYEE" ? ["/accounts", "/customers", "/transactions"] : role === "CUSTOMER" ? ["/transactions", "/loans"] : ["/customers", "/employees", "/accounts"] });
+      res.json({ role, branchName: branch.rows[0]?.BRANCH_NAME || null, totalCustomers, totalAccounts, totalEmployees, totalLoans: pendingLoans, pendingLoans, totalBalance: accounts.rows[0].TOTAL_BALANCE, todayTransactions: Number(transactions.rows[0].COUNT || 0), transactionVolume: volume.rows[0].VOLUME, frozenAccounts: Number(frozen.rows[0].COUNT || 0), pendingKyc: Number(kyc.rows[0].COUNT || 0), recentTransactions: recent.rows, recentAudit: audit.rows, quickLinks: role === "ADMIN" ? ["/user-management", "/database-explorer"] : role === "EMPLOYEE" ? ["/accounts", "/customers", "/transactions"] : role === "CUSTOMER" ? ["/transactions", "/loans"] : ["/customers", "/employees", "/accounts"] });
     });
   } catch (error) { next(error); }
 }

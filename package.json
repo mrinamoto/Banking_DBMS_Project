@@ -3,8 +3,12 @@
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "client:lint": "npm --prefix client run lint",
+    "client:test": "node --test client/test/depositSuiteState.test.js",
     "server:start": "npm --prefix server start",
     "db:test": "npm --prefix server run db:test",
+    "db:doctor": "npm --prefix server run db:doctor",
+    "db:build-worksheets": "node scripts/build-worksheets.js",
+    "db:check-worksheets": "node scripts/build-worksheets.js --check",
     "server:check": "npm --prefix server run check",
     "server:test": "npm --prefix server test"
   },

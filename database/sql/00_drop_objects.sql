@@ -25,6 +25,7 @@ DECLARE
   END drop_if_present;
 BEGIN
   -- Standalone objects and packages are removed before their dependent tables.
+  drop_if_present('TABLE', 'BANK_PROFILE', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('VIEW', 'VW_PENDING_LOAN_APPLICATIONS');
   drop_if_present('VIEW', 'VW_DAILY_TRANSACTION_TOTALS');
   drop_if_present('VIEW', 'VW_LOAN_SUMMARY');
@@ -49,6 +50,7 @@ BEGIN
 
   -- Triggers are normally dropped with tables; explicit calls make intent clear.
   drop_if_present('TRIGGER', 'TRG_PROTECT_FINANCIAL_HISTORY');
+  drop_if_present('TRIGGER', 'TRG_VALIDATE_USER_STAFF_CODE');
   drop_if_present('TRIGGER', 'TRG_AUDIT_LOAN_STATUS');
   drop_if_present('TRIGGER', 'TRG_AUDIT_ACCOUNT_STATUS');
   drop_if_present('TRIGGER', 'TRG_AUDIT_CUSTOMER_UPDATE');
@@ -72,6 +74,8 @@ BEGIN
   drop_if_present('TABLE', 'ACCOUNT_TYPES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'BRANCHES', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('TABLE', 'AUDIT_LOG', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'SERVICE_REQUESTS', ' CASCADE CONSTRAINTS PURGE');
+  drop_if_present('TABLE', 'NOTIFICATIONS', ' CASCADE CONSTRAINTS PURGE');
   drop_if_present('SEQUENCE', 'SEQ_BUSINESS_REFERENCE');
 END;
 /

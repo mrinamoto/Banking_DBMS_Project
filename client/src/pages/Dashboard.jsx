@@ -17,6 +17,7 @@ export default function Dashboard() {
     [Landmark, data.role === "CUSTOMER" ? "Loan status" : "Pending loans", data.totalLoans, "text-amber-600"],
     [Activity, "Today's transactions", data.todayTransactions, "text-cyan-600"],
     [Snowflake, "Frozen accounts", data.frozenAccounts, "text-blue-600"],
+    [Users, "Pending KYC", data.pendingKyc, "text-orange-600"],
   ] : [];
   return <>
     <PageHeader title="Dashboard" subtitle={data?.branchName ? `${data.role} workspace · ${data.branchName}` : `Live ${data?.role || "banking"} totals from Oracle`} />

@@ -46,3 +46,36 @@ BEGIN
   RAISE_APPLICATION_ERROR(-20200,'Financial transaction history cannot be updated or deleted. Use a controlled reversal entry.');
 END;
 /
+
+CREATE OR REPLACE TRIGGER trg_validate_user_staff_code
+BEFORE INSERT OR UPDATE OF employee_id, staff_code, role ON users
+FOR EACH ROW
+DECLARE
+  v_employee_code employees.employee_code%TYPE;
+BEGIN
+  :NEW.username := LOWER(TRIM(:NEW.username));
+  :NEW.role := UPPER(TRIM(:NEW.role));
+  IF :NEW.staff_code IS NOT NULL THEN
+    :NEW.staff_code := UPPER(TRIM(:NEW.staff_code));
+  END IF;
+
+  IF :NEW.role IN ('ADMIN', 'MANAGER', 'EMPLOYEE') THEN
+    IF :NEW.employee_id IS NULL OR :NEW.customer_id IS NOT NULL THEN
+      RAISE_APPLICATION_ERROR(-20309, 'Staff users must link to an employee and cannot link to a customer.');
+    END IF;
+    SELECT employee_code INTO v_employee_code FROM employees WHERE employee_id = :NEW.employee_id AND status = 'ACTIVE';
+    IF :NEW.staff_code IS NULL OR UPPER(TRIM(:NEW.staff_code)) <> UPPER(TRIM(v_employee_code)) THEN
+      RAISE_APPLICATION_ERROR(-20310, 'Staff code must match the linked active employee code.');
+    END IF;
+  ELSIF :NEW.role = 'CUSTOMER' THEN
+    IF :NEW.customer_id IS NULL OR :NEW.employee_id IS NOT NULL OR :NEW.staff_code IS NOT NULL THEN
+      RAISE_APPLICATION_ERROR(-20311, 'Customer users must link only to a customer.');
+    END IF;
+  ELSE
+    RAISE_APPLICATION_ERROR(-20313, 'Unsupported application role.');
+  END IF;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    RAISE_APPLICATION_ERROR(-20312, 'Staff users must link to an existing employee.');
+END;
+/

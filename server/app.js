@@ -10,6 +10,9 @@ const customerToolsRoutes = require("./routes/customerToolsRoutes");
 const depositRoutes = require("./routes/depositRoutes");
 const { notFound, errorHandler } = require("./middleware/errors");
 const { getConnection } = require("./config/db");
+const notificationRoutes = require("./routes/notificationRoutes");
+const serviceRequestRoutes = require("./routes/serviceRequestRoutes");
+const bankProfileRoutes = require("./routes/bankProfileRoutes");
 
 function createApp() {
   const app = express();
@@ -24,17 +27,20 @@ function createApp() {
       await connection.execute("SELECT 1 AS ok FROM dual");
       res.json({ status: "ok", database: "connected" });
     } catch (error) {
-      console.error(`Database health check failed: ${error.message}`);
+      console.error("Database health check failed.");
       res.status(503).json({ status: "unavailable", database: "disconnected" });
     } finally {
       if (connection) await connection.close();
     }
   });
   app.use("/api/auth", authRoutes);
+  app.use("/api/bank-profile", bankProfileRoutes);
   app.use("/api/staff", staffRoutes);
   app.use("/api/explorer", explorerRoutes);
   app.use("/api", customerToolsRoutes);
   app.use("/api", depositRoutes);
+  app.use("/api/notifications", notificationRoutes);
+  app.use("/api/service-requests", serviceRequestRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/customers", customerRoutes);
   app.use("/api", bankingRoutes);

@@ -1,57 +1,72 @@
-# Oracle Database Guide
+# Oracle database guide
 
-This directory contains the Oracle SQL and PL/SQL academic core of the Smart Banking Management System. The implemented entities are branches, customers, employees, application users, account types, accounts, bank transactions, fund transfers, loan types, loans, loan payments, and audit logs. Cards and beneficiaries are not implemented modules.
+The `database/sql` directory is the authoritative modular Oracle source. It
+defines the banking schema, packages, triggers, reference data, fictional viva
+data, and package-controlled ledger activity. The generated files in
+`database/worksheet` are rebuilt from that source; do not edit them manually.
 
-## Requirement
+## Supported setup
 
-- Oracle Database 19c or later, including Oracle Database Free
-- SQL*Plus, SQLcl, or Oracle SQL Developer
-- A dedicated empty project schema
+Use Oracle Database Free/Autonomous Database (19c-compatible or later) and a
+dedicated classroom schema. Node.js uses SQL*Net; browser FreeSQL access is a
+separate connection path. The exact current Schema Connection Details panel is
+authoritative.
 
-## Safe installation
+## Fresh disposable schema
 
-From the repository root:
+From PowerShell install dependencies and build the worksheets:
 
 ```powershell
-sqlplus bank_app@localhost:1521/FREEPDB1 `@database/run_all.sql
+npm install
+npm --prefix client install
+npm --prefix server install
+npm run db:build-worksheets
 ```
 
-`run_all.sql` uses `@@` so every child path is resolved relative to the installer file. Its order is:
+In FreeSQL, run `SELECT USER FROM dual;`, then run the following browser files
+with **Run Script** in order:
 
-1. `sql/01_create_tables.sql` — tables and `SEQ_BUSINESS_REFERENCE`
-2. `sql/02_constraints.sql` — additional cross-column constraints
-3. `sql/05_indexes.sql` — non-unique search/report indexes
-4. `sql/07_functions.sql` — balance, EMI, and number-generation functions
-5. `sql/11_packages.sql` — banking and loan package specifications/bodies
-6. `sql/08_procedures.sql` — compatibility procedure wrappers
-7. `sql/04_views.sql` — reporting views
-8. `sql/10_triggers.sql` — audit actor/function, audit triggers, immutable ledger protection
-9. `sql/03_insert_sample_data.sql` — fictional classroom data
-10. `USER_ERRORS` compiler report
+1. `database/worksheet/full_reset_and_install.sql` (destructive; disposable schema only)
+2. `database/worksheet/verify_install.sql` (read-only)
+3. From PowerShell, `npm run db:test` and `npm run db:doctor`
+4. `npm --prefix server run seed:viva-users -- --base-secret "<private-secret-at-least-16-characters>"`
+5. `database/tests/viva_smoke_tests.sql`
+6. `database/tests/acceptance_tests.sql` (requires `FAILED : 0` and `FINAL RESULT: PASS`)
 
-The installer never calls `sql/00_drop_objects.sql`. That cleanup file is development-only and must never be run against important data. The fresh installer seeds only fictional deposit scheme definitions; it creates no active deposits, certificates, balances, or ledger postings.
+The SQL creates no application passwords. The Node seed hashes temporary
+passwords and creates the thirteen staff logins in one transaction. Never run
+the reset worksheet against valuable data.
 
-## Phase 1 staff-login upgrade
+## Existing schema upgrade
 
-For an existing schema, run `database/migrations/001_staff_users_explorer_dashboard.sql` (or paste the equivalent `database/worksheet/phase1_upgrade.sql`) as the schema owner. It adds `USERS.MUST_CHANGE_PASSWORD`, `ACCOUNT_LOCKED`, `LOCKED_AT`, `PASSWORD_CHANGED_AT`, `UPDATED_AT`, the `LOGIN_HISTORY` table, and supporting indexes without dropping or rewriting existing rows. The fresh installer creates the same final shape.
+Run `database/worksheet/full_upgrade.sql` after taking a backup. It applies
+migrations 001 through 006 without dropping customers, accounts, passwords, or
+ledger history. It is not needed after a successful fresh reset. The final
+unified principal model requires every ADMIN, MANAGER, and EMPLOYEE login to
+link to an active `EMPLOYEES` row and matching `STAFF_CODE`; CUSTOMER logins
+link only to `CUSTOMERS`.
 
-Phase 2 upgrades use `database/migrations/002_reversal_statement_customer_tools.sql` (or `database/worksheet/phase2_upgrade.sql`). This adds package-controlled deposit/withdrawal reversal metadata, statement view support, preferences, beneficiaries, and customer KYC. The migration never changes or deletes existing ledger rows; it recompiles the maintained banking package and views after the DDL.
+## Final demo model
 
-## Transaction rule
+- Five fictional branches: HO-001, DHK-001, UTT-001, CTG-001, CHP-001.
+- Thirteen staff entities: four Admins, one Manager, and eight Employees.
+- Exactly 25 customers with `DEMO-NID-0001` through `DEMO-NID-0025`.
+- Five account types, six loan products, and classroom deposit schemes.
+- Package-generated accounts, transactions, transfers, loans, payments,
+  beneficiaries, KYC, quotations, notifications, service requests, and audit
+  rows. Demo data is rerunnable and contains no passwords.
+- `BANK_PROFILE` stores fictional branding; GET is public and only ADMIN may
+  update it through the API.
 
-Packages use validation, `SAVEPOINT`, `SELECT ... FOR UPDATE`, balance updates, and ledger inserts. They do not call `COMMIT`. Express commits once after the entire PL/SQL operation succeeds and rolls back after an error. This is the project's ACID boundary.
+## Modular order
 
-## Tests
+`database/run_all.sql` is a non-destructive SQL*Plus installer. It runs base
+tables, constraints, indexes, reference data, views, functions, packages,
+procedures, triggers, and demo data in dependency order. Do not execute all
+individual files manually. `00_drop_objects.sql` is used only inside the reset
+worksheet.
 
-After a successful fresh-schema installation:
-
-```sql
-@database/tests/acceptance_tests.sql
-```
-
-The suite checks exact expected Oracle error codes and rolls all test data back. The five smaller `test_*.sql` files are current smoke tests and do not contain old schema names.
-
-Verify compilation:
+## Verification queries
 
 ```sql
 SELECT object_name, object_type, status
@@ -62,16 +77,25 @@ ORDER BY object_type, object_name;
 SELECT name, type, line, position, text
 FROM user_errors
 ORDER BY name, sequence;
-
-Run the read-only Phase 1 checks with `@database/tests/phase1_tests.sql`. They verify lifecycle columns, the one-employee/one-login constraint, and the allowlisted explorer indexes; they do not create test data.
-
-After Phase 2 migration, run `@database/tests/phase2_tests.sql` for read-only object and constraint checks, then run the transactional acceptance suite. Reversal tests must run only in a disposable development schema because they create and roll back ledger test rows.
-
-## Phase 3 educational deposit tools
-
-Run `@database/migrations/003_deposit_profit_suite.sql` on an existing schema, then `@database/tests/phase3_tests.sql`. The upgrade adds `DEPOSIT_SCHEMES`, `DEPOSIT_CERTIFICATES`, indexes, fictional scheme seeds, and `VW_DEPOSIT_CERTIFICATE_REMINDERS` without changing accounts or transactions. The Express calculator implements simple interest, monthly compounding, tax, DPS annuity estimates, maturity dates, and an early-withdrawal preview. Saving a quotation stores status `QUOTATION` only; it never activates a deposit or changes a balance.
-
-FreeSQL worksheets are self-contained: `worksheet/full_upgrade.sql` (non-destructive existing-schema repair), `worksheet/full_fresh_install.sql` (empty schema), `worksheet/full_reset_and_install.sql` (destructive development reset), and `worksheet/verify_install.sql` (read-only verification). They deliberately contain no `@` or `@@` child-file dependencies.
 ```
 
-Oracle execution evidence is pending until these commands are run against the student's local schema.
+Both queries should return no rows after installation. The read-only
+`verify_install.sql` additionally checks required tables/columns, constraints,
+indexes, packages, staff IDs, 25 customers, financial consistency, products,
+notifications, and service requests.
+
+## Transaction rule
+
+Banking and loan packages validate ownership/status, lock balances, use
+savepoints, and never commit. Express or the demo installer commits the whole
+operation and rolls back on errors. No application path should insert ledger
+rows directly when a package operation exists.
+
+## Troubleshooting
+
+`NJS-503`/`NJS-500` usually indicates a listener, network, wallet, or connect
+string problem; `ORA-01017` indicates credentials; `ORA-12154`/`ORA-12514`
+indicates a service-name/connect-string problem. Check required variables in
+`server/.env`, use the exact FreeSQL connection panel value, and never print
+passwords, wallet paths, tokens, or complete connect strings. FreeSQL browser
+success does not prove Node SQL*Net connectivity.

@@ -192,7 +192,7 @@ export default function AnimatedAuth({ initialMode = "login" }) {
             {error && !isSignup && <div className="auth-error" role="alert" aria-live="assertive">{error}</div>}
             <form className="auth-form auth-login-form" onSubmit={submitLogin} noValidate>
               <div className="auth-field">
-                <label htmlFor="login-username">Username</label>
+                <label htmlFor="login-username">Username or Staff ID</label>
                 <input id="login-username" autoComplete="username" required value={loginForm.username} onChange={(event) => updateLogin("username", event.target.value)} />
               </div>
               <div className="auth-field">

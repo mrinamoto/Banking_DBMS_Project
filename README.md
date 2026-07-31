@@ -16,6 +16,7 @@ An academic, production-like Banking Management System built with React, Express
 - Ownership-scoped bank statements, saved beneficiaries, customer KYC workflow, and practical settings.
 - Educational deposit schemes with simple/monthly-compound profit, tax, maturity, DPS, printable quotations, reminders, and preview-only early withdrawal estimates.
 - Customer, employee, branch, account, loan, transaction, report, audit, and settings screens.
+- Oracle-backed Notification Center and branch-scoped Customer Service Requests.
 - Open account, deposit, withdraw, transfer, freeze account, activate account, loan application, approval, rejection, and payment workflows.
 - Oracle audit logging through database triggers.
 - Beginner-friendly setup and deployment documentation.
@@ -62,12 +63,19 @@ Copy-Item server\.env.example server\.env
 
 Edit `server/.env` locally. `PORT` is the API port, `CLIENT_ORIGIN` is the browser origin, `DB_USER`, `DB_PASSWORD`, and `DB_CONNECT_STRING` identify the Oracle application schema, `DB_POOL_MIN/MAX` tune the pool, and `SESSION_SECRET` must be at least 32 random characters. If Autonomous Database mTLS is required, set the optional wallet directory/password variables and keep the wallet outside Git. Never paste these values into source files.
 
+Generate a local session secret without displaying any database credential:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
 The Vite development proxy sends `/api` to `http://localhost:5000`, so `client/.env.local` is normally unnecessary. For a separately hosted frontend, create `client/.env.local` with `VITE_API_URL=https://your-api-host.example/api`.
 
 Test configuration and start the two processes in separate PowerShell windows:
 
 ```powershell
 npm run db:test
+npm run db:doctor
 npm run server:start
 npm run client:dev
 ```
@@ -76,7 +84,7 @@ Open `http://localhost:5173/login`; verify the backend at `http://localhost:5000
 
 ## Oracle setup and repair
 
-Use a dedicated classroom schema. After confirming the schema is empty or safe to initialize, connect as the application user and run `@database/run_all.sql`. This installer does not run the destructive `database/sql/00_drop_objects.sql`. Then inspect invalid objects and errors:
+Use a dedicated classroom schema. Browser FreeSQL and Node SQL*Net are separate connection paths; copy the current Schema Connection Details into `server/.env` and never commit it. For browser execution, regenerate self-contained worksheets with `npm run db:build-worksheets` and use Run Script. `database/run_all.sql` remains a non-destructive SQL*Plus installer and does not run the destructive drop script. Then inspect invalid objects and errors:
 
 ```sql
 SELECT object_type, status, COUNT(*)
@@ -89,11 +97,36 @@ FROM user_errors
 ORDER BY name, sequence;
 ```
 
-For an existing schema, run the non-destructive Phase 1 upgrade `@database/migrations/001_staff_users_explorer_dashboard.sql` (or paste `database/worksheet/phase1_upgrade.sql`), then run the read-only checks with `@database/tests/phase1_tests.sql`. Only after the objects are valid, run `@database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`. Create temporary role users with `npm --prefix server run seed:demo-users -- <temporary-password>` and remove them after testing. See `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
+For an existing schema, run the non-destructive `database/worksheet/full_upgrade.sql`; it applies migrations 001–006, including the unified staff principal rule, without dropping financial history. For a disposable schema use `database/worksheet/full_reset_and_install.sql`; it recreates the final source and fictional demo data. Do not run a reset automatically or run full upgrade after a successful reset. The data script creates no passwords. Seed university demonstration identities only at runtime with `npm --prefix server run seed:viva-users -- --base-secret "<local-secret-at-least-16-chars>"` (add `--include-customer` only when needed). Temporary passwords are printed once to the invoking terminal. See `database/README.md` and `docs/ORACLE_DATABASE_FREE_SETUP.md` for wallet, service-name, and invalid-object troubleshooting.
 
-For Phase 2 on an existing schema, run `@database/migrations/002_reversal_statement_customer_tools.sql` (or paste `database/worksheet/phase2_upgrade.sql`), then `@database/tests/phase2_tests.sql`. Reversal is intentionally limited to successful `DEPOSIT` and `WITHDRAWAL` rows; transfers and loan payments are unsupported.
+### Exact FreeSQL release sequence
 
-For Phase 3 on an existing schema, run the non-destructive `@database/migrations/003_deposit_profit_suite.sql`, then the read-only `@database/tests/phase3_tests.sql`. The pasteable `database/worksheet/full_upgrade.sql` contains the Phase 1–3 upgrade without `@` dependencies. For an empty classroom schema use `database/worksheet/full_fresh_install.sql`; `full_reset_and_install.sql` is destructive and development-only. `database/worksheet/verify_install.sql` is read-only. Deposit quotations never activate a deposit, debit an account, or post a ledger transaction. The calculator is an educational estimate; tax and early-withdrawal values are not banking advice.
+For a disposable development schema, paste these browser worksheets and run the checks in order:
+
+1. `SELECT USER FROM dual;`
+2. `database/worksheet/full_reset_and_install.sql` (destructive; never use on valuable data).
+3. `database/worksheet/verify_install.sql`.
+4. `npm run db:test` from PowerShell.
+5. `npm run db:doctor` from PowerShell.
+6. Seed staff accounts: `npm --prefix server run seed:viva-users -- --base-secret "<secret-at-least-16-characters>"`.
+7. Paste `database/tests/viva_smoke_tests.sql` (staff-ID checks are valid only after the seed succeeds).
+8. Paste `database/tests/acceptance_tests.sql` and require `FAILED : 0` / `FINAL RESULT: PASS`.
+9. Start the backend and verify `http://localhost:5000/api/health`.
+10. Start the frontend and open `http://localhost:5173/login`.
+11. Exercise the four role checklists below.
+
+For an existing schema, use `full_upgrade.sql` instead of the reset worksheet. It preserves accounts, balances, and transaction history. Never run the reset worksheet automatically.
+
+The seed password pattern is `<base-secret>-A001` through `<base-secret>-A004`, `<base-secret>-M001`, and `<base-secret>-E001` through `<base-secret>-E008`. Passwords are printed only by the seed process and must be changed at first login.
+
+Role login map:
+
+- Admin: `admin.mrinmoy001` / `A-ID-001`, `admin.monira002` / `A-ID-002`, `admin.ashik003` / `A-ID-003`, `admin.asif004` / `A-ID-004`.
+- Manager: `mayen.majumder001` / `M-ID-001`.
+- Employees: `mashrur.hasan001` (E-ID-001), `risha.khan002` (E-ID-002), `samin.hasan003` (E-ID-003), `abrar.karib004` (E-ID-004), `rakib.hasan005` (E-ID-005), `prapto.sorkar006` (E-ID-006), `sayba.tasnim007` (E-ID-007), and `tasnia.suborno008` (E-ID-008).
+- Customer: use public `/register`, or pass `--include-customer` to the runtime seed for the optional demo customer.
+
+Manual acceptance should confirm Admin global access; Manager own-branch scope; Employee own-branch banking actions; and Customer-only ownership of accounts, transfers, beneficiaries, statements, KYC, loans, notifications, and service requests. A role must receive a redirect or 403 outside its permission scope.
 
 ## Deployment
 
@@ -121,6 +154,22 @@ Database acceptance tests:
 
 Common fixes: free ports 5000/5173 before restarting; check every required `.env` variable without printing its value; verify the Oracle service name and database availability; keep `CLIENT_ORIGIN` aligned with the browser origin; use `VITE_API_URL` only when the frontend is not using the Vite proxy; reinstall dependencies with the existing lock files if packages are mismatched; and clear an expired `bank_token`/`bank_user` session by signing out or using a private browser window.
 
+Common Oracle failures include `NJS-503` (listener/network/connect-string availability), `ORA-01017` (credentials), `ORA-12154`/`ORA-12514` (service name), invalid objects shown by `USER_ERRORS`, missing schema tables, and wallet/mTLS configuration errors. Keep wallet files outside Git. Deployment requires `PORT`, `CLIENT_ORIGIN`, `DB_USER`, `DB_PASSWORD`, `DB_CONNECT_STRING`, `DB_POOL_MIN`, `DB_POOL_MAX`, `SESSION_SECRET`, and optionally `DB_WALLET_DIR`/`DB_WALLET_PASSWORD` on the server; the frontend requires `VITE_API_URL` only when it is not using the Vite proxy.
+
+To commit and merge after review (not performed by this task):
+
+```powershell
+git status --short
+git diff --check
+git add .
+git commit -m "chore: verify release readiness"
+git push origin feature/final-submission-hardening
+git switch master
+git pull --ff-only origin master
+git merge --no-ff feature/final-submission-hardening
+git push origin master
+```
+
 ## ER Diagram
 
 ```mermaid
@@ -143,7 +192,7 @@ erDiagram
 - `branches(branch_id, branch_code, branch_name, city, address, phone, swift_code, status, created_at)`
 - `customers(customer_id, first_name, last_name, date_of_birth, phone, email, national_id, address, status)`
 - `employees(employee_id, branch_id, employee_code, job_title, email, salary, status)`
-- `users(user_id, customer_id, employee_id, username, password_hash, role, is_active, must_change_password, account_locked, last_login)`
+- `users(user_id, customer_id, employee_id, staff_code, username, password_hash, role, is_active, must_change_password, account_locked, last_login)`
 - `login_history(login_history_id, user_id, attempted_username, success_flag, event_type, failure_reason, occurred_at)`
 - `transaction_reversals(reversal_id, original_transaction_id, reversal_transaction_id, reason, reversed_by, reversed_at, status)`
 - `beneficiaries(beneficiary_id, customer_id, source_account_id, beneficiary_account_id, nickname, status)`
@@ -155,6 +204,7 @@ erDiagram
 - `audit_log(audit_id, table_name, record_id, action_name, action_by, action_date)`
 - `deposit_schemes(scheme_id, scheme_code, scheme_type, annual_profit_rate, calculation_method, tax_percentage, status)`
 - `deposit_certificates(certificate_id, certificate_number, customer_id, scheme_id, expected_maturity_amount, maturity_date, status)`
+- `loan_types(loan_type_id, type_name, descriptions, income/fee eligibility, interest_method, amount and term limits, status)`
 
 ## Normalization
 

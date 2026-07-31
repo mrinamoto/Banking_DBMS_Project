@@ -6,7 +6,8 @@ CREATE INDEX idx_transactions_type_date ON transactions(transaction_type, transa
 CREATE INDEX idx_loans_customer_status ON loans(customer_id, status);
 CREATE INDEX idx_loans_status_date ON loans(status, application_date);
 CREATE INDEX idx_audit_date ON audit_log(action_date DESC);
-CREATE INDEX idx_users_username_lower ON users(LOWER(username));
+CREATE UNIQUE INDEX uk_users_username_lower ON users(LOWER(username));
+CREATE UNIQUE INDEX uk_users_staff_code_lower ON users(LOWER(staff_code));
 CREATE INDEX idx_users_role_active ON users(role, is_active, account_locked);
 CREATE INDEX idx_users_employee ON users(employee_id);
 CREATE INDEX idx_login_history_user_date ON login_history(user_id, occurred_at DESC);
@@ -26,3 +27,7 @@ CREATE INDEX idx_deposit_scheme_status ON deposit_schemes(status, scheme_type);
 CREATE INDEX idx_certificate_customer_status ON deposit_certificates(customer_id, status, maturity_date);
 CREATE INDEX idx_certificate_account ON deposit_certificates(account_id, status);
 CREATE INDEX idx_certificate_maturity ON deposit_certificates(maturity_date, status);
+CREATE INDEX idx_notifications_user_read ON notifications(user_id,is_read,created_at DESC);
+CREATE INDEX idx_service_requests_customer ON service_requests(customer_id,status,updated_at DESC);
+CREATE INDEX idx_service_requests_branch ON service_requests(branch_id,status,updated_at DESC);
+CREATE INDEX idx_service_requests_assignee ON service_requests(assigned_to,status,updated_at DESC);

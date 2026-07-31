@@ -1,174 +1,47 @@
-# Banking Database Management System
-## Database Schema Design
+# Final schema reference
 
-Version: 1.0
+The database uses Oracle tables, constraints, indexes, views, PL/SQL packages,
+procedures, and triggers. `USERS.ROLE` is the only application authorization
+source.
 
----
+## Principals
 
-Phase 2 additions to the maintained schema are `TRANSACTION_REVERSALS` (linked
-compensating ledger rows), `BENEFICIARIES`, `CUSTOMER_KYC`, and
-`USER_PREFERENCES`. The transaction type check also includes `REVERSAL_DEBIT`
-and `REVERSAL_CREDIT`. See `database/sql/01_create_tables.sql` for the
-authoritative column definitions and `database/migrations/002_reversal_statement_customer_tools.sql`
-for the non-destructive upgrade.
+`USERS` contains login lifecycle fields (`USERNAME`, `PASSWORD_HASH`, role,
+lock/failed-login state, password-change state, `STAFF_CODE`, and
+`DISPLAY_NAME`). A CUSTOMER user has `CUSTOMER_ID` and no employee fields. An
+ADMIN, MANAGER, or EMPLOYEE user has `EMPLOYEE_ID` and a `STAFF_CODE` matching
+the linked active `EMPLOYEES.EMPLOYEE_CODE`; customer fields are null. Unique
+indexes enforce case-insensitive usernames and staff codes, while foreign keys
+and the `TRG_VALIDATE_USER_STAFF_CODE` trigger enforce the cross-table rule.
 
-# 1. CUSTOMERS
+`EMPLOYEES` stores all bank staff, including the four Admins and the Manager;
+`JOB_TITLE` is descriptive and is not a second role store. `CUSTOMERS` stores
+the 25 fictional viva customers and all public signups.
 
-Description:
-Stores customer information.
+## Core entities
 
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| CUSTOMER_ID | NUMBER | Primary Key |
-| FIRST_NAME | VARCHAR2(50) | NOT NULL |
-| LAST_NAME | VARCHAR2(50) | NOT NULL |
-| DATE_OF_BIRTH | DATE | NOT NULL |
-| GENDER | CHAR(1) | CHECK ('M','F','O') |
-| PHONE | VARCHAR2(15) | UNIQUE |
-| EMAIL | VARCHAR2(100) | UNIQUE |
-| NATIONAL_ID | VARCHAR2(20) | UNIQUE |
-| ADDRESS | VARCHAR2(200) | NOT NULL |
-| CREATED_AT | DATE | DEFAULT SYSDATE |
+- `BANK_PROFILE`, `BRANCHES`, `ACCOUNT_TYPES`, `ACCOUNTS`
+- `TRANSACTIONS`, `FUND_TRANSFERS`, `TRANSACTION_REVERSALS`, `AUDIT_LOG`
+- `LOAN_TYPES`, `LOANS`, `LOAN_PAYMENTS`
+- `BENEFICIARIES`, `CUSTOMER_KYC`, `USER_PREFERENCES`
+- `DEPOSIT_SCHEMES`, `DEPOSIT_CERTIFICATES`
+- `NOTIFICATIONS`, `SERVICE_REQUESTS`, `LOGIN_HISTORY`
 
----
+All financial writes use the maintained `PKG_BANKING_OPERATIONS` and
+`PKG_LOAN_OPERATIONS` APIs where available. Packages do not commit internally;
+the caller owns the transaction boundary.
 
-# 2. BRANCHES
+## Integrity and normalization
 
-Description:
-Stores branch information.
+Branches, account types, loan products, and deposit products are normalized
+lookup/master tables. Foreign keys protect ownership and branch relationships;
+status and amount checks protect business invariants; audit triggers record
+changes. The reset worksheet recreates the complete model, while migration 006
+repairs older development schemas without dropping ledger data.
 
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| BRANCH_ID | NUMBER | Primary Key |
-| BRANCH_NAME | VARCHAR2(100) | NOT NULL |
-| CITY | VARCHAR2(50) | NOT NULL |
-| ADDRESS | VARCHAR2(200) | NOT NULL |
-| PHONE | VARCHAR2(15) | UNIQUE |
+## Demo data
 
----
-
-# 3. ACCOUNT_TYPES
-
-Description:
-Stores available account types.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| ACCOUNT_TYPE_ID | NUMBER | Primary Key |
-| TYPE_NAME | VARCHAR2(30) | UNIQUE |
-| MIN_BALANCE | NUMBER(12,2) | CHECK (MIN_BALANCE >= 0) |
-
----
-
-# 4. ACCOUNTS
-
-Description:
-Stores bank account information.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| ACCOUNT_ID | NUMBER | Primary Key |
-| ACCOUNT_NUMBER | VARCHAR2(20) | UNIQUE |
-| CUSTOMER_ID | NUMBER | Foreign Key |
-| BRANCH_ID | NUMBER | Foreign Key |
-| ACCOUNT_TYPE_ID | NUMBER | Foreign Key |
-| BALANCE | NUMBER(12,2) | CHECK (BALANCE >= 0) |
-| STATUS | VARCHAR2(20) | CHECK ('ACTIVE','INACTIVE','CLOSED') |
-| OPEN_DATE | DATE | DEFAULT SYSDATE |
-
----
-
-# 5. EMPLOYEES
-
-Description:
-Stores employee information.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| EMPLOYEE_ID | NUMBER | Primary Key |
-| BRANCH_ID | NUMBER | Foreign Key |
-| FIRST_NAME | VARCHAR2(50) | NOT NULL |
-| LAST_NAME | VARCHAR2(50) | NOT NULL |
-| POSITION | VARCHAR2(50) | NOT NULL |
-| SALARY | NUMBER(10,2) | CHECK (SALARY > 0) |
-| HIRE_DATE | DATE | DEFAULT SYSDATE |
-
----
-
-# 6. TRANSACTIONS
-
-Description:
-Stores all banking transactions.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| TRANSACTION_ID | NUMBER | Primary Key |
-| ACCOUNT_ID | NUMBER | Foreign Key |
-| TRANSACTION_TYPE | VARCHAR2(20) | CHECK ('DEPOSIT','WITHDRAW','TRANSFER') |
-| AMOUNT | NUMBER(12,2) | CHECK (AMOUNT > 0) |
-| TRANSACTION_DATE | DATE | DEFAULT SYSDATE |
-| DESCRIPTION | VARCHAR2(200) | NULL |
-
----
-
-# 7. LOANS
-
-Description:
-Stores customer loans.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| LOAN_ID | NUMBER | Primary Key |
-| CUSTOMER_ID | NUMBER | Foreign Key |
-| LOAN_AMOUNT | NUMBER(12,2) | CHECK (LOAN_AMOUNT > 0) |
-| INTEREST_RATE | NUMBER(5,2) | CHECK (INTEREST_RATE >= 0) |
-| STATUS | VARCHAR2(20) | CHECK ('PENDING','APPROVED','REJECTED') |
-| APPLY_DATE | DATE | DEFAULT SYSDATE |
-
----
-
-# 8. USERS
-
-Description:
-Stores login information.
-
-| Column Name | Data Type | Constraint |
-|-------------|-----------|------------|
-| USER_ID | NUMBER | Primary Key |
-| CUSTOMER_ID | NUMBER | Foreign Key UNIQUE |
-| USERNAME | VARCHAR2(50) | UNIQUE |
-| PASSWORD_HASH | VARCHAR2(255) | NOT NULL |
-| ROLE | VARCHAR2(20) | CHECK ('CUSTOMER','ADMIN') |
-| CREATED_AT | DATE | DEFAULT SYSDATE |
-
----
-
-# Foreign Key Relationships
-
-CUSTOMERS
-    |
-    +---- ACCOUNTS
-
-CUSTOMERS
-    |
-    +---- LOANS
-
-CUSTOMERS
-    |
-    +---- USERS
-
-BRANCHES
-    |
-    +---- ACCOUNTS
-
-BRANCHES
-    |
-    +---- EMPLOYEES
-
-ACCOUNT_TYPES
-    |
-    +---- ACCOUNTS
-
-ACCOUNTS
-    |
-    +---- TRANSACTIONS
+Fresh/reset worksheets create five branches, thirteen staff entity rows, exactly
+25 customers (`DEMO-NID-0001`..`DEMO-NID-0025`), products, and deterministic
+package-generated financial/support records. Passwords are created only by
+`server/scripts/seed-viva-users.js` at runtime and are never stored in SQL.

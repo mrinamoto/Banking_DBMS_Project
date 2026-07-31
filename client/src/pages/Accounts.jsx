@@ -25,14 +25,14 @@ export default function Accounts() {
         api.get("/lookups"),
       ];
       if (user.role !== "CUSTOMER") requests.push(api.get("/customers", { params: { pageSize: 100 } }));
-      const [accountsResult, lookupResult, customerResult] = await Promise.all(requests);
-      setData(accountsResult.data);
-      setLookups(lookupResult.data);
-      setCustomers(customerResult?.data.items || []);
-      setError("");
-    } catch (requestError) {
-      setError(messageFrom(requestError));
-    }
+      const results = await Promise.allSettled(requests);
+      const [accountsResult, lookupResult, customerResult] = results;
+      const errors = [];
+      if (accountsResult.status === "fulfilled") setData(accountsResult.value.data); else errors.push(messageFrom(accountsResult.reason));
+      if (lookupResult.status === "fulfilled") setLookups(lookupResult.value.data); else errors.push(messageFrom(lookupResult.reason));
+      if (customerResult?.status === "fulfilled") setCustomers(customerResult.value.data.items || []); else if (customerResult) errors.push(messageFrom(customerResult.reason));
+      setError(errors.join(" "));
+    } catch (requestError) { setError(messageFrom(requestError)); }
   }
 
   useEffect(() => { load(); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps

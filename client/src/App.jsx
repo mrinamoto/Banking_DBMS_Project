@@ -17,7 +17,11 @@ import Statement from "./pages/Statement";
 import Beneficiaries from "./pages/Beneficiaries";
 import Kyc from "./pages/Kyc";
 import DepositSuite from "./pages/DepositSuite";
+import Notifications from "./pages/Notifications";
+import ServiceRequests from "./pages/ServiceRequests";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { BankProfileProvider } from "./context/BankProfileContext.jsx";
 
 function Protected() {
   const { user, authLoading } = useAuth();
@@ -27,7 +31,8 @@ function Protected() {
   if (!user) return <Navigate to="/login" replace />;
   return (
     <Layout>
-      <Routes>
+      <ErrorBoundary>
+        <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/accounts" element={<Accounts />} />
@@ -44,8 +49,11 @@ function Protected() {
         <Route path="/database-explorer" element={["ADMIN", "MANAGER"].includes(user.role) ? <DatabaseExplorer /> : <Navigate to="/" />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/deposits" element={<DepositSuite />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/service-requests" element={<ServiceRequests />} />
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+        </Routes>
+      </ErrorBoundary>
     </Layout>
   );
 }
@@ -54,11 +62,13 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<AnimatedAuth />} />
-          <Route path="/register" element={<AnimatedAuth initialMode="signup" />} />
-          <Route path="/*" element={<Protected />} />
-        </Routes>
+        <BankProfileProvider>
+          <Routes>
+            <Route path="/login" element={<AnimatedAuth />} />
+            <Route path="/register" element={<AnimatedAuth initialMode="signup" />} />
+            <Route path="/*" element={<Protected />} />
+          </Routes>
+        </BankProfileProvider>
       </AuthProvider>
     </BrowserRouter>
   );
