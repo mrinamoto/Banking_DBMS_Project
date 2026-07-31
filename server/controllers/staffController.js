@@ -23,7 +23,7 @@ async function listUsers(req, res, next) {
       if (binds.role && !["ADMIN", "MANAGER", "EMPLOYEE", "CUSTOMER"].includes(binds.role)) throw badRequest("Invalid role filter.");
       if (binds.active && !["Y", "N"].includes(binds.active)) throw badRequest("Invalid active filter.");
       const result = await connection.execute(
-        `SELECT u.user_id,u.username,u.staff_code,u.role,u.is_active,u.account_locked,u.must_change_password,
+        `SELECT u.user_id,u.username,u.staff_code,u.display_name,u.role,u.is_active,u.account_locked,u.must_change_password,
                 u.failed_login_count,u.last_login,u.created_at,u.updated_at,
                 e.employee_id,e.employee_code,e.first_name||' '||e.last_name employee_name,
                 e.job_title,e.branch_id,b.branch_name,
@@ -106,7 +106,7 @@ async function getUserDetails(req, res, next) {
   try {
     await withConnection(getConnection, async (connection) => {
       const result = await connection.execute(
-        `SELECT u.user_id,u.username,u.staff_code,u.role,u.is_active,u.account_locked,u.locked_at,u.must_change_password,
+        `SELECT u.user_id,u.username,u.staff_code,u.display_name,u.role,u.is_active,u.account_locked,u.locked_at,u.must_change_password,
                 u.failed_login_count,u.last_login,u.created_at,u.updated_at,
                 e.employee_id,e.employee_code,e.first_name||' '||e.last_name employee_name,e.job_title,b.branch_name,
                 c.customer_id,c.first_name||' '||c.last_name customer_name

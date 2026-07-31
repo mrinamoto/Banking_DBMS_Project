@@ -1,5 +1,7 @@
 -- Read-only verification for the final schema.
 -- Read-only verification for the final schema.
+-- Read-only verification for the final schema.
+-- Read-only verification for the final schema.
 -- Read-only FreeSQL verification for the final Phase 3 schema.
 SELECT table_name FROM user_tables WHERE table_name IN ('USERS','CUSTOMERS','BRANCHES','ACCOUNTS','LOANS','TRANSACTIONS','AUDIT_LOG','DEPOSIT_SCHEMES','DEPOSIT_CERTIFICATES','BENEFICIARIES','CUSTOMER_KYC') ORDER BY table_name;
 SELECT object_name,object_type,status FROM user_objects WHERE object_name IN ('PKG_BANKING_OPERATIONS','PKG_LOAN_OPERATIONS','VW_ACCOUNT_STATEMENT','VW_DEPOSIT_CERTIFICATE_REMINDERS') ORDER BY object_type,object_name;
@@ -11,3 +13,7 @@ SELECT index_name FROM user_indexes WHERE index_name IN ('IDX_DEPOSIT_SCHEME_STA
 SELECT employee_code,first_name||' '||last_name employee_name,status FROM employees WHERE employee_code IN ('M-ID-001','E-ID-001') ORDER BY employee_code;
 SELECT username,staff_code,role,is_active FROM users WHERE staff_code IN ('A-ID-001','M-ID-001','E-ID-001') ORDER BY staff_code;
 SELECT type_name,short_description,interest_method,status FROM loan_types ORDER BY loan_type_id;
+SELECT table_name FROM user_tables WHERE table_name IN ('NOTIFICATIONS','SERVICE_REQUESTS') ORDER BY table_name;
+SELECT COUNT(*) notification_count FROM notifications;
+SELECT COUNT(*) service_request_count FROM service_requests;
+SELECT status,COUNT(*) request_count FROM service_requests GROUP BY status ORDER BY status;

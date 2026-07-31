@@ -10,6 +10,8 @@ const customerToolsRoutes = require("./routes/customerToolsRoutes");
 const depositRoutes = require("./routes/depositRoutes");
 const { notFound, errorHandler } = require("./middleware/errors");
 const { getConnection } = require("./config/db");
+const notificationRoutes = require("./routes/notificationRoutes");
+const serviceRequestRoutes = require("./routes/serviceRequestRoutes");
 
 function createApp() {
   const app = express();
@@ -35,6 +37,8 @@ function createApp() {
   app.use("/api/explorer", explorerRoutes);
   app.use("/api", customerToolsRoutes);
   app.use("/api", depositRoutes);
+  app.use("/api/notifications", notificationRoutes);
+  app.use("/api/service-requests", serviceRequestRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/customers", customerRoutes);
   app.use("/api", bankingRoutes);

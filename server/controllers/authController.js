@@ -17,7 +17,7 @@ function profileFromRow(user) {
     employeeId: user.EMPLOYEE_ID,
     branchId: user.BRANCH_ID,
     staffCode: user.STAFF_CODE || user.EMPLOYEE_CODE || null,
-    displayName: user.EMPLOYEE_NAME || user.CUSTOMER_NAME || (user.ROLE === "ADMIN" ? "System Administrator" : user.USERNAME),
+    displayName: user.DISPLAY_NAME || user.EMPLOYEE_NAME || user.CUSTOMER_NAME || (user.ROLE === "ADMIN" ? "System Administrator" : user.USERNAME),
     mustChangePassword: user.MUST_CHANGE_PASSWORD === "Y",
   };
 }
@@ -27,7 +27,7 @@ async function login(req, res, next) {
     requireFields(req.body, ["username", "password"]);
     await withConnection(getConnection, async (connection) => {
       const result = await connection.execute(
-        `SELECT u.user_id, u.username, u.staff_code, u.password_hash, u.role, u.is_active,
+        `SELECT u.user_id, u.username, u.staff_code, u.display_name, u.password_hash, u.role, u.is_active,
                 u.account_locked, u.must_change_password, u.customer_id, u.employee_id, e.branch_id,
                 e.employee_code, e.first_name||' '||e.last_name employee_name,
                 c.first_name||' '||c.last_name customer_name

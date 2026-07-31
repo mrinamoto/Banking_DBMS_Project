@@ -20,6 +20,7 @@ BEGIN
   ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_fee CHECK (processing_fee_percentage BETWEEN 0 AND 100)');
   ignore_expected('ALTER TABLE loan_types ADD CONSTRAINT ck_loan_type_method CHECK (interest_method IN (''REDUCING_BALANCE'',''FLAT_RATE''))');
   ignore_expected('ALTER TABLE users ADD (staff_code VARCHAR2(20))');
+  ignore_expected('ALTER TABLE users ADD (display_name VARCHAR2(100))');
   UPDATE users u
      SET staff_code = CASE
        WHEN u.role='ADMIN' THEN 'A-ID-'||LPAD(u.user_id,3,'0')

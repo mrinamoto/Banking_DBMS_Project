@@ -17,6 +17,8 @@ import Statement from "./pages/Statement";
 import Beneficiaries from "./pages/Beneficiaries";
 import Kyc from "./pages/Kyc";
 import DepositSuite from "./pages/DepositSuite";
+import Notifications from "./pages/Notifications";
+import ServiceRequests from "./pages/ServiceRequests";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -46,6 +48,8 @@ function Protected() {
         <Route path="/database-explorer" element={["ADMIN", "MANAGER"].includes(user.role) ? <DatabaseExplorer /> : <Navigate to="/" />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/deposits" element={<DepositSuite />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/service-requests" element={<ServiceRequests />} />
         <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </ErrorBoundary>

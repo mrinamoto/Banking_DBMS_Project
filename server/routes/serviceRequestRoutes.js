@@ -1,0 +1,10 @@
+const express = require("express");
+const { authenticate } = require("../middleware/auth");
+const controller = require("../controllers/serviceRequestController");
+const router = express.Router();
+router.use(authenticate);
+router.get("/", controller.list);
+router.post("/", controller.create);
+router.patch("/:id/assign", controller.assign);
+router.patch("/:id/status", controller.updateStatus);
+module.exports = router;
